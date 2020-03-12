@@ -1,5 +1,6 @@
-import { createHighlight } from './types';
+import { createHighlight, getDefaultBorderStyle } from './types';
 import { arrayEach } from './../../helpers/array';
+import { createBorderStyleClass } from './borderStyleFactory';
 
 export const ACTIVE_HEADER_TYPE = 'active-header';
 export const AREA_TYPE = 'area';
@@ -43,19 +44,35 @@ class Highlight {
      */
     this.layerLevel = 0;
     /**
+     * The collection of BorderStyle classes, holder for border style of the Selection class.
+     *
+     * @type {Map<string, BorderStyle>}
+     */
+    this.borderStyles = new Map([
+      [CELL_TYPE, this._createBorderStyleClass(CELL_TYPE)],
+      [FILL_TYPE, this._createBorderStyleClass(FILL_TYPE)],
+      [AREA_TYPE, this._createBorderStyleClass(AREA_TYPE)],
+    ]);
+    /**
      * `cell` highlight object which describes attributes for the currently selected cell.
      * It can only occur only once on the table.
      *
      * @type {Selection}
      */
-    this.cell = createHighlight(CELL_TYPE, options);
+    this.cell = createHighlight(CELL_TYPE, {
+      BorderStyle: this.borderStyles.get(CELL_TYPE),
+      ...options,
+    });
     /**
      * `fill` highlight object which describes attributes for the borders for autofill functionality.
      * It can only occur only once on the table.
      *
      * @type {Selection}
      */
-    this.fill = createHighlight(FILL_TYPE, options);
+    this.fill = createHighlight(FILL_TYPE, {
+      BorderStyle: this.borderStyles.get(FILL_TYPE),
+      ...options,
+    });
     /**
      * Collection of the `area` highlights. That objects describes attributes for the borders and selection of
      * the multiple selected cells. It can occur multiple times on the table.
@@ -81,9 +98,9 @@ class Highlight {
     /**
      * Collection of the `custom-selection`, holder for example borders added through CustomBorders plugin.
      *
-     * @type {Selection[]}
+     * @type {Map.<string, Selection>}
      */
-    this.customSelections = [];
+    this.customSelections = new Map();
   }
 
   /**
@@ -147,7 +164,11 @@ class Highlight {
     if (this.areas.has(layerLevel)) {
       area = this.areas.get(layerLevel);
     } else {
-      area = createHighlight(AREA_TYPE, { layerLevel, ...this.options });
+      area = createHighlight(AREA_TYPE, {
+        BorderStyle: this.borderStyles.get(AREA_TYPE),
+        layerLevel,
+        ...this.options,
+      });
 
       this.areas.set(layerLevel, area);
     }
@@ -216,6 +237,18 @@ class Highlight {
   }
 
   /**
+   * Gets prototype of the border class. That layer provides ability to change properties for
+   * all border style instances used within specific highlight type without noticing
+   * that instances about the changes.
+   *
+   * @param {string} highlightType The selection type.
+   * @returns {object|undefined}
+   */
+  getCommonBorderStyle(highlightType) {
+    return this.borderStyles.get(highlightType)?.prototype;
+  }
+
+  /**
    * Get all Walkontable Selection instances which describes the state of the visual highlight of the active headers.
    *
    * @returns {Selection[]}
@@ -236,10 +269,11 @@ class Highlight {
   /**
    * Add selection to the custom selection instance. The new selection are added to the end of the selection collection.
    *
+   * @param {string} key Border ID.
    * @param {object} selectionInstance The selection instance.
    */
-  addCustomSelection(selectionInstance) {
-    this.customSelections.push(createHighlight(CUSTOM_SELECTION, { ...selectionInstance }));
+  addCustomSelection(key, selectionInstance) {
+    this.customSelections.set(key, createHighlight(CUSTOM_SELECTION, { ...selectionInstance }));
   }
 
   /**
@@ -255,19 +289,35 @@ class Highlight {
   }
 
   /**
-   * This object can be iterate over using `for of` syntax or using internal `arrayEach` helper.
+   * This function returns an array that can be iterate over all kinds of highlight objects.
    *
    * @returns {Selection[]}
    */
-  [Symbol.iterator]() {
+  getAll() {
     return [
       this.cell,
       this.fill,
       ...this.areas.values(),
       ...this.headers.values(),
       ...this.activeHeaders.values(),
-      ...this.customSelections,
-    ][Symbol.iterator]();
+      ...this.customSelections.values(),
+    ];
+  }
+
+  /**
+   * Creates a border style class declaration for specyfic highlight type.
+   *
+   * @param {string} highlightType The selection type.
+   * @returns {BorderStyle|undefined}
+   */
+  _createBorderStyleClass(highlightType) {
+    const defaultBorderStyle = getDefaultBorderStyle(highlightType);
+
+    if (!defaultBorderStyle) {
+      return;
+    }
+
+    return createBorderStyleClass(defaultBorderStyle);
   }
 }
 

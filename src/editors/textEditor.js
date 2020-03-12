@@ -21,6 +21,7 @@ import BaseEditor, { EditorState } from './_baseEditor';
 import EventManager from './../eventManager';
 import { KEY_CODES } from './../helpers/unicode';
 import { stopImmediatePropagation, isImmediatePropagationStopped } from './../helpers/dom/event';
+import { GRIDLINE_WIDTH } from '../3rdparty/walkontable/src';
 
 const EDITOR_VISIBLE_CLASS_NAME = 'ht_editor_visible';
 const EDITOR_HIDDEN_CLASS_NAME = 'ht_editor_hidden';
@@ -343,8 +344,8 @@ class TextEditor extends BaseEditor {
     const { wtOverlays, wtViewport } = this.hot.view.wt;
     const currentOffset = offset(this.TD);
     const containerOffset = offset(this.hot.rootElement);
-    const scrollableContainerTop = wtOverlays.topOverlay.holder;
-    const scrollableContainerLeft = wtOverlays.leftOverlay.holder;
+    const scrollableContainerTop = wtOverlays.topOverlay.master.wtTable.holder;
+    const scrollableContainerLeft = wtOverlays.leftOverlay.master.wtTable.holder;
     const totalRowsCount = this.hot.countRows();
     const containerScrollTop = scrollableContainerTop !== this.hot.rootWindow ? scrollableContainerTop.scrollTop : 0;
     const containerScrollLeft = scrollableContainerLeft !== this.hot.rootWindow ? scrollableContainerLeft.scrollLeft : 0;
@@ -353,44 +354,42 @@ class TextEditor extends BaseEditor {
     const scrollTop = ['', 'left'].includes(editorSection) ? containerScrollTop : 0;
     const scrollLeft = ['', 'top', 'bottom'].includes(editorSection) ? containerScrollLeft : 0;
 
-    // If colHeaders is disabled, cells in the first row have border-top
-    const editTopModifier = currentOffset.top === containerOffset.top ? 0 : 1;
-
     const settings = this.hot.getSettings();
-    const colHeadersCount = this.hot.hasColHeaders();
+    const hasColHeaders = this.hot.hasColHeaders();
+    const hasRowHeaders = this.hot.hasRowHeaders();
     const backgroundColor = this.TD.style.backgroundColor;
 
-    let editTop = currentOffset.top - containerOffset.top - editTopModifier - scrollTop;
-    let editLeft = currentOffset.left - containerOffset.left - 1 - scrollLeft;
+    let editTop = currentOffset.top - containerOffset.top - GRIDLINE_WIDTH - scrollTop;
+    let editLeft = currentOffset.left - containerOffset.left - GRIDLINE_WIDTH - scrollLeft;
     let cssTransformOffset;
 
     // TODO: Refactor this to the new instance.getCell method (from #ply-59), after 0.12.1 is released
     switch (editorSection) {
       case 'top':
-        cssTransformOffset = getCssTransform(wtOverlays.topOverlay.clone.wtTable.holder.parentNode);
+        cssTransformOffset = getCssTransform(wtOverlays.topOverlay.clone.wtTable.wtRootElement);
         break;
       case 'left':
-        cssTransformOffset = getCssTransform(wtOverlays.leftOverlay.clone.wtTable.holder.parentNode);
+        cssTransformOffset = getCssTransform(wtOverlays.leftOverlay.clone.wtTable.wtRootElement);
         break;
       case 'top-left-corner':
-        cssTransformOffset = getCssTransform(wtOverlays.topLeftCornerOverlay.clone.wtTable.holder.parentNode);
+        cssTransformOffset = getCssTransform(wtOverlays.topLeftCornerOverlay.clone.wtTable.wtRootElement);
         break;
       case 'bottom-left-corner':
-        cssTransformOffset = getCssTransform(wtOverlays.bottomLeftCornerOverlay.clone.wtTable.holder.parentNode);
+        cssTransformOffset = getCssTransform(wtOverlays.bottomLeftCornerOverlay.clone.wtTable.wtRootElement);
         break;
       case 'bottom':
-        cssTransformOffset = getCssTransform(wtOverlays.bottomOverlay.clone.wtTable.holder.parentNode);
+        cssTransformOffset = getCssTransform(wtOverlays.bottomOverlay.clone.wtTable.wtRootElement);
         break;
       default:
         break;
     }
 
-    if (colHeadersCount && this.hot.getSelectedLast()[0] === 0 ||
+    if (!hasColHeaders && this.hot.getSelectedLast()[0] === 0 ||
         (settings.fixedRowsBottom && this.hot.getSelectedLast()[0] === totalRowsCount - settings.fixedRowsBottom)) {
       editTop += 1;
     }
 
-    if (this.hot.getSelectedLast()[1] === 0) {
+    if (!hasRowHeaders && this.hot.getSelectedLast()[1] === 0) {
       editLeft += 1;
     }
 

@@ -707,7 +707,10 @@ describe('WalkontableEvent', () => {
           border: {
             width: 1,
             color: 'red',
-            style: 'solid'
+            style: 'solid',
+            cornerVisible() {
+              return true;
+            }
           }
         })
       }),
@@ -743,7 +746,10 @@ describe('WalkontableEvent', () => {
           border: {
             width: 1,
             color: 'red',
-            style: 'solid'
+            style: 'solid',
+            cornerVisible() {
+              return true;
+            }
           }
         })
       }),

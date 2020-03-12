@@ -30,7 +30,7 @@ export default function hideColumnItem(hiddenColumnsPlugin) {
       rangeEach(start, end, column => hiddenColumnsPlugin.hideColumn(column));
 
       this.render();
-      this.view.wt.wtOverlays.adjustElementsSize(true);
+      this.view.wt.wtOverlays.adjustElementsSizes(true);
 
     },
     disabled: false,

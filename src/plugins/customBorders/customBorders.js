@@ -1,13 +1,8 @@
 import BasePlugin from './../_base';
 import { registerPlugin } from './../../plugins';
-import {
-  hasOwnProperty,
-  objectEach } from './../../helpers/object';
+import { hasOwnProperty } from './../../helpers/object';
 import { rangeEach } from './../../helpers/number';
-import {
-  arrayEach,
-  arrayReduce,
-  arrayMap } from './../../helpers/array';
+import { arrayEach } from './../../helpers/array';
 import { CellRange } from './../../3rdparty/walkontable/src';
 import * as C from './../../i18n/constants';
 import {
@@ -92,6 +87,14 @@ class CustomBorders extends BasePlugin {
      * @type {Array}
      */
     this.savedBorders = [];
+
+    /**
+     * Map containing border id as the key and the border object as the value.
+     *
+     * @private
+     * @type {Map}
+     */
+    this.savedBordersById = new Map();
   }
 
   /**
@@ -123,6 +126,7 @@ class CustomBorders extends BasePlugin {
    */
   disablePlugin() {
     this.hideBorders();
+    this.render();
 
     super.disablePlugin();
   }
@@ -173,6 +177,14 @@ class CustomBorders extends BasePlugin {
       }
     });
 
+    this.render();
+  }
+
+  /**
+   * Instruct Handsontable to re-render, because some of the configuration was changed and we are not expecting it to be
+   * rendered automatically.
+   */
+  render() {
     /*
     The line below triggers a re-render of Handsontable. This will be a "fastDraw"
     render, because that is the default for the TableView class.
@@ -254,12 +266,13 @@ class CustomBorders extends BasePlugin {
     } else {
       arrayEach(this.savedBorders, (border) => {
         this.clearBordersFromSelectionSettings(border.id);
-        this.clearNullCellRange();
         this.hot.removeCellMeta(border.row, border.col, 'borders');
       });
 
       this.savedBorders.length = 0;
+      this.savedBordersById.clear();
     }
+    this.render();
   }
 
   /**
@@ -267,24 +280,28 @@ class CustomBorders extends BasePlugin {
    *
    * @private
    * @param {object} border Object with `row` and `col`, `left`, `right`, `top` and `bottom`, `id` and `border` ({Object} with `color`, `width` and `cornerVisible` property) properties.
-   * @param {string} place Coordinate where add/remove border - `top`, `bottom`, `left`, `right`.
    */
-  insertBorderIntoSettings(border, place) {
-    const hasSavedBorders = this.checkSavedBorders(border);
+  insertBorderIntoSettings(border) {
+    const prevBorder = this.savedBordersById.get(border.id);
 
-    if (!hasSavedBorders) {
+    if (prevBorder) {
+      const index = this.savedBorders.indexOf(prevBorder);
+
+      this.savedBorders[index] = border;
+    } else {
       this.savedBorders.push(border);
     }
+    this.savedBordersById.set(border.id, border);
 
     const coordinates = {
       row: border.row,
       col: border.col
     };
     const cellRange = new CellRange(coordinates, coordinates, coordinates);
-    const hasCustomSelections = this.checkCustomSelections(border, cellRange, place);
+    const hasCustomSelections = this.checkCustomSelections(border, cellRange);
 
     if (!hasCustomSelections) {
-      this.hot.selection.highlight.addCustomSelection({ border, cellRange });
+      this.hot.selection.highlight.addCustomSelection(border.id, { border, cellRange });
     }
   }
 
@@ -303,15 +320,12 @@ class CustomBorders extends BasePlugin {
     if (borderDescriptor) {
       border = extendDefaultBorder(border, borderDescriptor);
 
-      arrayEach(this.hot.selection.highlight.customSelections, (customSelection) => {
-        if (border.id === customSelection.settings.id) {
-          Object.assign(customSelection.settings, borderDescriptor);
+      const customSelection = this.hot.selection.highlight.customSelections.get(border.id);
 
-          border = customSelection.settings;
-
-          return false; // breaks forAll
-        }
-      });
+      if (customSelection) {
+        Object.assign(customSelection.settings, borderDescriptor);
+        border = customSelection.settings;
+      }
     }
 
     this.hot.setCellMeta(row, column, 'borders', border);
@@ -384,7 +398,6 @@ class CustomBorders extends BasePlugin {
     this.spliceBorder(borderId);
 
     this.clearBordersFromSelectionSettings(borderId);
-    this.clearNullCellRange();
 
     this.hot.removeCellMeta(row, column, 'borders');
   }
@@ -408,9 +421,9 @@ class CustomBorders extends BasePlugin {
     if (remove) {
       bordersMeta[place] = createSingleEmptyBorder();
 
-      const hideCount = this.countHide(bordersMeta);
+      const disabled = this.areAllEdgesDisabled(bordersMeta);
 
-      if (hideCount === 4) {
+      if (disabled) {
         this.removeAllBorders(row, column);
 
       } else {
@@ -511,24 +524,42 @@ class CustomBorders extends BasePlugin {
   }
 
   /**
-   * Count hide property in border object.
+   * Returns information if all of the border edges are disabled.
    *
    * @private
    * @param {object} border Object with `row` and `col`, `left`, `right`, `top` and `bottom`, `id` and `border` ({Object} with `color`, `width` and `cornerVisible` property) properties.
-   * @returns {Array}
+   * @returns {boolean}
    */
-  countHide(border) {
-    const values = Object.values(border);
+  areAllEdgesDisabled(border) {
+    if (this.isEdgeEnabled(border.left)) {
+      return false;
+    }
+    if (this.isEdgeEnabled(border.right)) {
+      return false;
+    }
+    if (this.isEdgeEnabled(border.top)) {
+      return false;
+    }
+    if (this.isEdgeEnabled(border.bottom)) {
+      return false;
+    }
 
-    return arrayReduce(values, (accumulator, value) => {
-      let result = accumulator;
+    return true;
+  }
 
-      if (value.hide) {
-        result += 1;
-      }
+  /**
+   * For a given subtree of the border settings that represents a single edge, returns a TRUE if the edge
+   * is configured to be rendered; otherwise FALSE.
+   *
+   * @param {object} edge Object with optional `hide` property.
+   * @returns {boolean}
+   */
+  isEdgeEnabled(edge) {
+    if (edge !== undefined && edge.hide !== undefined) {
+      return !edge.hide;
+    }
 
-      return result;
-    }, 0);
+    return true;
   }
 
   /**
@@ -538,27 +569,12 @@ class CustomBorders extends BasePlugin {
    * @param {string} borderId Border id name as string.
    */
   clearBordersFromSelectionSettings(borderId) {
-    const index = arrayMap(this.hot.selection.highlight.customSelections, customSelection => customSelection.settings.id).indexOf(borderId);
+    const customSelection = this.hot.selection.highlight.customSelections.get(borderId);
 
-    if (index > -1) {
-      this.hot.selection.highlight.customSelections[index].clear();
+    if (customSelection) {
+      customSelection.clear();
+      this.hot.selection.highlight.customSelections.delete(customSelection.settings.id);
     }
-  }
-
-  /**
-   * Clear cellRange with null value.
-   *
-   * @private
-   */
-  clearNullCellRange() {
-    arrayEach(this.hot.selection.highlight.customSelections, (customSelection, index) => {
-      if (customSelection.cellRange === null) {
-        this.hot.selection.highlight.customSelections[index].destroy();
-        this.hot.selection.highlight.customSelections.splice(index, 1);
-
-        return false; // breaks forAll
-      }
-    });
   }
 
   /**
@@ -569,7 +585,6 @@ class CustomBorders extends BasePlugin {
   hideBorders() {
     arrayEach(this.savedBorders, (border) => {
       this.clearBordersFromSelectionSettings(border.id);
-      this.clearNullCellRange();
     });
   }
 
@@ -580,70 +595,26 @@ class CustomBorders extends BasePlugin {
    * @param {string} borderId Border id name as string.
    */
   spliceBorder(borderId) {
-    const index = arrayMap(this.savedBorders, border => border.id).indexOf(borderId);
+    const border = this.savedBordersById.get(borderId);
 
-    if (index > -1) {
+    if (border) {
+      const index = this.savedBorders.indexOf(border);
+
       this.savedBorders.splice(index, 1);
+      this.savedBordersById.delete(borderId);
     }
   }
 
   /**
-   * Check if an border already exists in the savedBorders array, and if true update border in savedBorders.
+   * Check if an border already exists in the customSelections.
    *
    * @private
    * @param {object} border Object with `row` and `col`, `left`, `right`, `top` and `bottom`, `id` and `border` ({Object} with `color`, `width` and `cornerVisible` property) properties.
    *
    * @returns {boolean}
    */
-  checkSavedBorders(border) {
-    let check = false;
-
-    const hideCount = this.countHide(border);
-
-    if (hideCount === 4) {
-      this.spliceBorder(border.id);
-      check = true;
-
-    } else {
-      arrayEach(this.savedBorders, (savedBorder, index) => {
-        if (border.id === savedBorder.id) {
-          this.savedBorders[index] = border;
-          check = true;
-
-          return false; // breaks forAll
-        }
-      });
-    }
-
-    return check;
-  }
-
-  /**
-   * Check if an border already exists in the customSelections, and if true call toggleHiddenClass method.
-   *
-   * @private
-   * @param {object} border Object with `row` and `col`, `left`, `right`, `top` and `bottom`, `id` and `border` ({Object} with `color`, `width` and `cornerVisible` property) properties.
-   * @param {string} place Coordinate where add/remove border - `top`, `bottom`, `left`, `right` and `noBorders`.
-   * @param {boolean} remove True when remove borders, and false when add borders.
-   *
-   * @returns {boolean}
-   */
-  checkCustomSelectionsFromContextMenu(border, place, remove) {
-    let check = false;
-
-    arrayEach(this.hot.selection.highlight.customSelections, (customSelection) => {
-      if (border.id === customSelection.settings.id) {
-        objectEach(customSelection.instanceBorders, (borderObject) => {
-          borderObject.toggleHiddenClass(place, remove); // TODO this also bad?
-        });
-
-        check = true;
-
-        return false; // breaks forAll
-      }
-    });
-
-    return check;
+  checkCustomSelectionsFromContextMenu(border) {
+    return this.hot.selection.highlight.customSelections.has(border.id);
   }
 
   /**
@@ -652,36 +623,28 @@ class CustomBorders extends BasePlugin {
    * @private
    * @param {object} border Object with `row` and `col`, `left`, `right`, `top` and `bottom`, `id` and `border` ({Object} with `color`, `width` and `cornerVisible` property) properties.
    * @param {CellRange} cellRange The selection range to check.
-   * @param {string} place Coordinate where add/remove border - `top`, `bottom`, `left`, `right`.
+   *
    * @returns {boolean}
    */
-  checkCustomSelections(border, cellRange, place) {
-    const hideCount = this.countHide(border);
-    let check = false;
+  checkCustomSelections(border, cellRange) {
+    const disabled = this.areAllEdgesDisabled(border);
 
-    if (hideCount === 4) {
+    if (disabled) {
       this.removeAllBorders(border.row, border.col);
-      check = true;
 
-    } else {
-      arrayEach(this.hot.selection.highlight.customSelections, (customSelection) => {
-        if (border.id === customSelection.settings.id) {
-          customSelection.cellRange = cellRange;
+      return true;
 
-          if (place) {
-            objectEach(customSelection.instanceBorders, (borderObject) => {
-              borderObject.changeBorderStyle(place, border);
-            });
-          }
-
-          check = true;
-
-          return false; // breaks forAll
-        }
-      });
     }
 
-    return check;
+    const customSelection = this.hot.selection.highlight.customSelections.get(border.id);
+
+    if (customSelection) {
+      customSelection.cellRange = cellRange;
+
+      return true;
+    }
+
+    return false;
   }
 
   /**

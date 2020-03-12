@@ -2,7 +2,6 @@ import {
   addClass,
   empty,
   fastInnerHTML,
-  getComputedStyle,
   getCssTransform,
   hasClass,
   offset,
@@ -186,27 +185,27 @@ class SelectEditor extends BaseEditor {
     const containerOffset = offset(this.hot.rootElement);
     const scrollableContainer = wtOverlays.scrollableElement;
     const editorSection = this.checkEditorSection();
-    let width = outerWidth(this.TD) + 1;
-    let height = outerHeight(this.TD) + 1;
+    const width = outerWidth(this.TD) + 1;
+    const height = outerHeight(this.TD) + 1;
     let editTop = currentOffset.top - containerOffset.top - 1 - (scrollableContainer.scrollTop || 0);
     let editLeft = currentOffset.left - containerOffset.left - 1 - (scrollableContainer.scrollLeft || 0);
     let cssTransformOffset;
 
     switch (editorSection) {
       case 'top':
-        cssTransformOffset = getCssTransform(wtOverlays.topOverlay.clone.wtTable.holder.parentNode);
+        cssTransformOffset = getCssTransform(wtOverlays.topOverlay.clone.wtTable.wtRootElement);
         break;
       case 'left':
-        cssTransformOffset = getCssTransform(wtOverlays.leftOverlay.clone.wtTable.holder.parentNode);
+        cssTransformOffset = getCssTransform(wtOverlays.leftOverlay.clone.wtTable.wtRootElement);
         break;
       case 'top-left-corner':
-        cssTransformOffset = getCssTransform(wtOverlays.topLeftCornerOverlay.clone.wtTable.holder.parentNode);
+        cssTransformOffset = getCssTransform(wtOverlays.topLeftCornerOverlay.clone.wtTable.wtRootElement);
         break;
       case 'bottom-left-corner':
-        cssTransformOffset = getCssTransform(wtOverlays.bottomLeftCornerOverlay.clone.wtTable.holder.parentNode);
+        cssTransformOffset = getCssTransform(wtOverlays.bottomLeftCornerOverlay.clone.wtTable.wtRootElement);
         break;
       case 'bottom':
-        cssTransformOffset = getCssTransform(wtOverlays.bottomOverlay.clone.wtTable.holder.parentNode);
+        cssTransformOffset = getCssTransform(wtOverlays.bottomOverlay.clone.wtTable.wtRootElement);
         break;
       default:
         break;
@@ -225,15 +224,6 @@ class SelectEditor extends BaseEditor {
       selectStyle[cssTransformOffset[0]] = cssTransformOffset[1];
     } else {
       resetCssTransform(this.select);
-    }
-
-    const cellComputedStyle = getComputedStyle(this.TD, this.hot.rootWindow);
-
-    if (parseInt(cellComputedStyle.borderTopWidth, 10) > 0) {
-      height -= 1;
-    }
-    if (parseInt(cellComputedStyle.borderLeftWidth, 10) > 0) {
-      width -= 1;
     }
 
     selectStyle.height = `${height}px`;

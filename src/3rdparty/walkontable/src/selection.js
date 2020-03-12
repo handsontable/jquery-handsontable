@@ -1,5 +1,5 @@
 import { addClass, hasClass } from './../../../helpers/dom/element';
-import Border from './border';
+import SelectionHandle from './selectionHandle';
 import CellCoords from './cell/coords';
 import CellRange from './cell/range';
 
@@ -14,24 +14,49 @@ class Selection {
   constructor(settings, cellRange) {
     this.settings = settings;
     this.cellRange = cellRange || null;
-    this.instanceBorders = {};
+    this.instanceSelectionHandles = new Map();
     this.classNames = [this.settings.className];
     this.classNameGenerator = this.linearClassNameGenerator(this.settings.className, this.settings.layerLevel);
   }
 
   /**
-   * Each Walkontable clone requires it's own border for every selection. This method creates and returns selection
-   * borders per instance.
+   * Returns information if the current selection is configured to display a corner or a selection handle.
+   *
+   * @returns {boolean}
+   */
+  hasSelectionHandle() {
+    return this.settings.border && typeof this.settings.border.cornerVisible === 'function';
+  }
+
+  /**
+   * Each Walkontable clone requires it's own selection handle for every selection. This method creates and returns selection.
+   * Handles per instance.
    *
    * @param {Walkontable} wotInstance The Walkontable instance.
-   * @returns {Border}
+   * @returns {SelectionHandle}
    */
-  getBorder(wotInstance) {
-    if (!this.instanceBorders[wotInstance.guid]) {
-      this.instanceBorders[wotInstance.guid] = new Border(wotInstance, this.settings);
+  getSelectionHandle(wotInstance) {
+    const found = this.getSelectionHandleIfExists(wotInstance);
+
+    if (found) {
+      return found;
     }
 
-    return this.instanceBorders[wotInstance.guid];
+    const selectionHandle = new SelectionHandle(wotInstance, this.settings);
+
+    this.instanceSelectionHandles.set(wotInstance, selectionHandle);
+
+    return selectionHandle;
+  }
+
+  /**
+   * Return an existing intance of Border class if defined for a given Walkontable instance.
+   *
+   * @param {Walkontable} wotInstance The Walkontable instance.
+   * @returns {SelectionHandle|undefined}
+   */
+  getSelectionHandleIfExists(wotInstance) {
+    return this.instanceSelectionHandles.get(wotInstance);
   }
 
   /**
@@ -102,21 +127,13 @@ class Selection {
    * @returns {Array} Returns array of coordinates for example `[1, 1, 5, 5]`.
    */
   getCorners() {
-    const topLeft = this.cellRange.getTopLeftCorner();
-    const bottomRight = this.cellRange.getBottomRightCorner();
-
-    return [
-      topLeft.row,
-      topLeft.col,
-      bottomRight.row,
-      bottomRight.col,
-    ];
+    return this.cellRange.getCorners();
   }
 
   /**
    * Adds class name to cell element at given coords.
    *
-   * @param {Walkontable} wotInstance Walkontable instance.
+   * @param {Table} wtTable Table instance.
    * @param {number} sourceRow Cell row coord.
    * @param {number} sourceColumn Cell column coord.
    * @param {string} className Class name.
@@ -124,8 +141,8 @@ class Selection {
    *                                            in a continuous way.
    * @returns {Selection}
    */
-  addClassAtCoords(wotInstance, sourceRow, sourceColumn, className, markIntersections = false) {
-    const TD = wotInstance.wtTable.getCell(new CellCoords(sourceRow, sourceColumn));
+  addClassAtCoords(wtTable, sourceRow, sourceColumn, className, markIntersections = false) {
+    const TD = wtTable.getCell(new CellCoords(sourceRow, sourceColumn));
 
     if (typeof TD === 'object') {
       let cellClassName = className;
@@ -182,108 +199,146 @@ class Selection {
   }
 
   /**
-   * @param {Walkontable} wotInstance The Walkontable instance.
+   * Add CSS class names to an element, but only if the element exists.
+   *
+   * @param {HTMLElement} elem A HTML element.
+   * @param {Array} classNames An array of string CSS class names.
    */
-  draw(wotInstance) {
+  addClassIfElemExists(elem, classNames) {
+    if (elem) {
+      addClass(elem, classNames);
+    }
+  }
+
+  /**
+   * Renders the selection if it is within the current viewport.
+   *
+   * @param {Walkontable} wotInstance The Walkontable instance.
+   * @param {number} tableRowsCount The number of rows in the table.
+   * @param {number} tableColumnsCount The number of columns in the table.
+   * @param {number} tableStartRow Source index of the first rendered row in the table. Expecting -1 when there are no rendered rows.
+   * @param {number} tableStartColumn Source index of the first rendered column in the table. Expecting -1 when there are no rendered columns.
+   * @param {number} tableEndRow Source index of the last rendered row in the table. Expecting  -1 when there are no rendered rows.
+   * @param {number} tableEndColumn Source index of the last rendered column in the table. Expecting -1 when there are no rendered columns.
+   * @returns {object[]|undefined} Object that contains information about border edges renderable in the current selection or undefined, if no border edges should be rendered for the current viewport. Properties are defined in {@link BorderRenderer.convertBorderEdgesDescriptorToLines}.
+   */
+  draw(wotInstance,
+       tableRowsCount, tableColumnsCount,
+       tableStartRow, tableStartColumn, tableEndRow, tableEndColumn) {
     if (this.isEmpty()) {
-      if (this.settings.border) {
-        this.getBorder(wotInstance).disappear();
+      if (this.hasSelectionHandle()) {
+        const found = this.getSelectionHandleIfExists(wotInstance);
+
+        if (found) {
+          found.disappear();
+        }
       }
 
       return;
     }
 
-    const renderedRows = wotInstance.wtTable.getRenderedRowsCount();
-    const renderedColumns = wotInstance.wtTable.getRenderedColumnsCount();
-    const corners = this.getCorners();
-    const [topRow, topColumn, bottomRow, bottomColumn] = corners;
+    const { wtTable } = wotInstance;
 
-    for (let column = 0; column < renderedColumns; column += 1) {
-      const sourceCol = wotInstance.wtTable.columnFilter.renderedToSource(column);
+    const { highlightHeaderClassName, highlightRowClassName, highlightColumnClassName } = this.settings;
+    const selectionCorners = this.getCorners();
+    const [selectionSettingTop, selectionSettingLeft, selectionSettingBottom, selectionSettingRight] = selectionCorners; // row/column values can be negative if row/column header was clicked
 
-      if (sourceCol >= topColumn && sourceCol <= bottomColumn) {
-        const TH = wotInstance.wtTable.getColumnHeader(sourceCol);
+    const selectionStartRow = Math.max(selectionSettingTop, tableStartRow);
+    const selectionStartColumn = Math.max(selectionSettingLeft, tableStartColumn);
+    const selectionEndRow = Math.min(selectionSettingBottom, tableEndRow);
+    const selectionEndColumn = Math.min(selectionSettingRight, tableEndColumn);
+    const selectionStart = { row: selectionStartRow, col: selectionStartColumn };
+    const selectionEnd = { row: selectionEndRow, col: selectionEndColumn };
+    const hasTopEdge = selectionStartRow === selectionSettingTop;
+    const hasRightEdge = selectionEndColumn === selectionSettingRight;
+    const hasBottomEdge = selectionEndRow === selectionSettingBottom;
+    const hasLeftEdge = selectionStartColumn === selectionSettingLeft;
+    let borderEdgesDescriptor;
 
-        if (TH) {
-          const newClasses = [];
+    if (tableColumnsCount && (highlightHeaderClassName || highlightColumnClassName)) {
+      for (let sourceColumn = selectionStartColumn; sourceColumn <= selectionEndColumn; sourceColumn += 1) {
+        this.addClassIfElemExists(wtTable.getColumnHeader(sourceColumn), [highlightHeaderClassName, highlightColumnClassName]);
 
-          if (this.settings.highlightHeaderClassName) {
-            newClasses.push(this.settings.highlightHeaderClassName);
+        if (highlightColumnClassName) {
+          for (let renderedRow = 0; renderedRow < tableRowsCount; renderedRow += 1) {
+            if (renderedRow < selectionStartRow || renderedRow > selectionEndRow) {
+              const sourceRow = wtTable.rowFilter.renderedToSource(renderedRow);
+
+              this.addClassAtCoords(wtTable, sourceRow, sourceColumn, highlightColumnClassName);
+            }
           }
-
-          if (this.settings.highlightColumnClassName) {
-            newClasses.push(this.settings.highlightColumnClassName);
-          }
-
-          addClass(TH, newClasses);
         }
       }
     }
 
-    for (let row = 0; row < renderedRows; row += 1) {
-      const sourceRow = wotInstance.wtTable.rowFilter.renderedToSource(row);
+    if (tableRowsCount && (highlightHeaderClassName || highlightRowClassName)) {
+      for (let sourceRow = selectionStartRow; sourceRow <= selectionEndRow; sourceRow += 1) {
+        this.addClassIfElemExists(wtTable.getRowHeader(sourceRow), [highlightHeaderClassName, highlightRowClassName]);
 
-      if (sourceRow >= topRow && sourceRow <= bottomRow) {
-        const TH = wotInstance.wtTable.getRowHeader(sourceRow);
+        if (highlightRowClassName) {
+          for (let renderedColumn = 0; renderedColumn < tableColumnsCount; renderedColumn += 1) {
+            if (renderedColumn < selectionStartColumn || renderedColumn > selectionEndColumn) {
+              const sourceColumn = wtTable.columnFilter.renderedToSource(renderedColumn);
 
-        if (TH) {
-          const newClasses = [];
-
-          if (this.settings.highlightHeaderClassName) {
-            newClasses.push(this.settings.highlightHeaderClassName);
+              this.addClassAtCoords(wtTable, sourceRow, sourceColumn, highlightRowClassName);
+            }
           }
-
-          if (this.settings.highlightRowClassName) {
-            newClasses.push(this.settings.highlightRowClassName);
-          }
-
-          addClass(TH, newClasses);
         }
       }
+    }
 
-      for (let column = 0; column < renderedColumns; column += 1) {
-        const sourceCol = wotInstance.wtTable.columnFilter.renderedToSource(column);
+    if (this.settings.border && selectionStartRow <= selectionEndRow && selectionStartColumn <= selectionEndColumn) {
+      borderEdgesDescriptor = {
+        settings: this.settings,
+        selectionStart,
+        selectionEnd,
+        hasTopEdge,
+        hasRightEdge,
+        hasBottomEdge,
+        hasLeftEdge
+      };
+    }
 
-        if (sourceRow >= topRow && sourceRow <= bottomRow && sourceCol >= topColumn && sourceCol <= bottomColumn) {
+    for (let sourceRow = selectionStartRow; sourceRow <= selectionEndRow; sourceRow += 1) {
+      for (let sourceColumn = selectionStartColumn; sourceColumn <= selectionEndColumn; sourceColumn += 1) {
+
+        if (sourceRow >= selectionStartRow
+            && sourceRow <= selectionEndRow
+            && sourceColumn >= selectionStartColumn
+            && sourceColumn <= selectionEndColumn) {
           // selected cell
           if (this.settings.className) {
-            this.addClassAtCoords(wotInstance, sourceRow, sourceCol, this.settings.className, this.settings.markIntersections);
-          }
-
-        } else if (sourceRow >= topRow && sourceRow <= bottomRow) {
-          // selection is in this row
-          if (this.settings.highlightRowClassName) {
-            this.addClassAtCoords(wotInstance, sourceRow, sourceCol, this.settings.highlightRowClassName);
-          }
-        } else if (sourceCol >= topColumn && sourceCol <= bottomColumn) {
-          // selection is in this column
-          if (this.settings.highlightColumnClassName) {
-            this.addClassAtCoords(wotInstance, sourceRow, sourceCol, this.settings.highlightColumnClassName);
+            this.addClassAtCoords(wtTable, sourceRow, sourceColumn, this.settings.className, this.settings.markIntersections);
           }
         }
 
-        const additionalSelectionClass = wotInstance.getSetting('onAfterDrawSelection', sourceRow, sourceCol, corners, this.settings.layerLevel);
+        if (this.settings.className) {
+          // This has a big perf cost. Don't perform this for custom borders
 
-        if (typeof additionalSelectionClass === 'string') {
-          this.addClassAtCoords(wotInstance, sourceRow, sourceCol, additionalSelectionClass);
+          const additionalSelectionClass = wotInstance.getSetting('onAfterDrawSelection', sourceRow, sourceColumn, selectionCorners, this.settings.layerLevel);
+
+          if (typeof additionalSelectionClass === 'string') {
+            this.addClassAtCoords(wtTable, sourceRow, sourceColumn, additionalSelectionClass);
+          }
         }
-
       }
     }
 
-    wotInstance.getSetting('onBeforeDrawBorders', corners, this.settings.className);
+    wotInstance.getSetting('onBeforeDrawBorders', selectionCorners, this.settings.className);
 
-    if (this.settings.border) {
-      // warning! border.appear modifies corners!
-      this.getBorder(wotInstance).appear(corners);
+    if (this.hasSelectionHandle()) {
+      // warning! selectionHandle.appear modifies corners!
+      this.getSelectionHandle(wotInstance).appear(selectionCorners);
     }
+
+    return borderEdgesDescriptor;
   }
 
   /**
    * Cleans up all the DOM state related to a Selection instance. Call this prior to deleting a Selection instance.
    */
   destroy() {
-    Object.values(this.instanceBorders).forEach(border => border.destroy());
+    this.instanceSelectionHandles.forEach(selectionHandle => selectionHandle.destroy());
   }
 }
 

@@ -268,6 +268,44 @@ describe('WalkontableScroll', () => {
       expect(wt.getViewport()[3]).toBeAroundValue(1);
     });
 
+    it('scroll viewport to a cell on far bottom and then back should update the border positions', () => {
+      spec().$wrapper.width(125).height(201);
+
+      const wt = walkontable({
+        data: getData,
+        totalRows: getTotalRows,
+        totalColumns: getTotalColumns,
+        columnHeaders: [function(col, TH) {
+          TH.innerHTML = col + 1;
+        }],
+        selections: createSelectionController({
+          current: new Walkontable.Selection({
+            border: {
+              width: 2,
+              color: 'blue'
+            }
+          }),
+        }),
+      });
+
+      wt.selections.getCell().add(new Walkontable.CellCoords(1, 1));
+      wt.draw();
+
+      const svgPaths = spec().$wrapper.find('svg:eq(0) path[stroke-width="2"]');
+      expect(svgPaths.length).toBe(1);
+
+      const svgPath = svgPaths[0];
+      expect(svgPath.getAttribute('d')).not.toBe('');
+
+      wt.scrollViewport(new Walkontable.CellCoords(12, 0));
+      wt.draw();
+      expect(svgPath.getAttribute('d')).toBe('');
+
+      wt.scrollViewport(new Walkontable.CellCoords(0, 0));
+      wt.draw();
+      expect(svgPath.getAttribute('d')).not.toBe('');
+    });
+
     it('scroll viewport to a cell on far top should make it visible on top edge', () => {
       spec().$wrapper.width(100).height(201);
 

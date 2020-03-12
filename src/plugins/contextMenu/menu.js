@@ -172,6 +172,7 @@ class Menu {
       readOnly: true,
       editor: false,
       copyPaste: false,
+      fillHandle: false,
       columns: [{
         data: 'name',
         renderer: (hot, TD, row, col, prop, value) => this.menuItemRenderer(hot, TD, row, col, prop, value)
@@ -222,6 +223,7 @@ class Menu {
     this.origOutsideClickDeselects = this.hot.getSettings().outsideClickDeselects;
     this.hot.getSettings().outsideClickDeselects = false;
     this.hotMenu = new Core(this.container, settings);
+    this.hotMenu.selection.highlight.cell.settings.border.width = 0;
     this.hotMenu.addHook('afterInit', () => this.onAfterInit());
     this.hotMenu.addHook('afterSelection', (...args) => this.onAfterSelection(...args));
     this.hotMenu.init();

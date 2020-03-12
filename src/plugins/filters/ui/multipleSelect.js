@@ -169,6 +169,7 @@ class MultipleSelectUI extends BaseUI {
         beforeKeyDown: event => this.onItemsBoxBeforeKeyDown(event)
       });
       this.itemsBox.init();
+      this.itemsBox.selection.highlight.cell.settings.border.width = 0;
     };
     hotInitializer(itemsBoxWrapper);
     setTimeout(() => hotInitializer(itemsBoxWrapper), 100);

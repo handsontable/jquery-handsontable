@@ -607,7 +607,7 @@ export function triggerPaste(str) {
 }
 
 /**
- * Returns column width for HOT container.
+ * Returns measured column width for HOT container.
  *
  * @param {jQuery} $elem An element to calculate from.
  * @param {number} col The column index.
@@ -628,6 +628,23 @@ export function colWidth($elem, col) {
   }
 
   return cell.offsetWidth;
+}
+
+/**
+ * Returns requested column width for HOT container, as provided in the inline style of the <col> element.
+ *
+ * @param {jQuery} $elem An element to calculate from.
+ * @param {number} col The column index.
+ * @returns {number}
+ */
+export function imposedColWidth($elem, col) {
+  const elem = $elem[0].querySelector('COLGROUP').querySelectorAll('COL')[col];
+
+  if (!elem) {
+    throw new Error(`Cannot find <COL> element of index '${col}'`);
+  }
+
+  return parseInt(elem.style.width, 10);
 }
 
 /**
@@ -961,3 +978,5 @@ class DataTransferObject {
     this.data[type] = value;
   }
 }
+
+export { getRenderedBorderPaths, getRenderedBorderPathExistence, getRenderedBorderStyles } from '../../src/3rdparty/walkontable/test/helpers/common';

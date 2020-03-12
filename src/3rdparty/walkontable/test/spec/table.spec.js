@@ -726,7 +726,7 @@ describe('WalkontableTable', () => {
     expect(wt.wtTable.getCoords($td2[0])).toEqual(new Walkontable.CellCoords(1, 1));
   });
 
-  it('getStretchedColumnWidth should return valid column width when stretchH is set as \'all\'', () => {
+  it('wot.columnUtils.getStretchedColumnWidth should return valid column width when stretchH is set as \'all\'', () => {
     const wt = walkontable({
       data: getData,
       totalRows: getTotalRows,
@@ -739,13 +739,13 @@ describe('WalkontableTable', () => {
     wt.draw();
     wt.wtViewport.columnsRenderCalculator.refreshStretching(502);
 
-    expect(wt.wtTable.getStretchedColumnWidth(0, 50)).toBe(125);
-    expect(wt.wtTable.getStretchedColumnWidth(1, 50)).toBe(125);
-    expect(wt.wtTable.getStretchedColumnWidth(2, 50)).toBe(125);
-    expect(wt.wtTable.getStretchedColumnWidth(3, 50)).toBe(127);
+    expect(wt.columnUtils.getStretchedColumnWidth(0, 50)).toBe(125);
+    expect(wt.columnUtils.getStretchedColumnWidth(1, 50)).toBe(125);
+    expect(wt.columnUtils.getStretchedColumnWidth(2, 50)).toBe(125);
+    expect(wt.columnUtils.getStretchedColumnWidth(3, 50)).toBe(127);
   });
 
-  it('getStretchedColumnWidth should return valid column width when stretchH is set as \'last\'', () => {
+  it('wot.columnUtils.getStretchedColumnWidth should return valid column width when stretchH is set as \'last\'', () => {
     const wt = walkontable({
       data: getData,
       totalRows: getTotalRows,
@@ -758,10 +758,10 @@ describe('WalkontableTable', () => {
     wt.draw();
     wt.wtViewport.columnsRenderCalculator.refreshStretching(502);
 
-    expect(wt.wtTable.getStretchedColumnWidth(0, 50)).toBe(50);
-    expect(wt.wtTable.getStretchedColumnWidth(1, 50)).toBe(50);
-    expect(wt.wtTable.getStretchedColumnWidth(2, 50)).toBe(50);
-    expect(wt.wtTable.getStretchedColumnWidth(3, 50)).toBe(352);
+    expect(wt.columnUtils.getStretchedColumnWidth(0, 50)).toBe(50);
+    expect(wt.columnUtils.getStretchedColumnWidth(1, 50)).toBe(50);
+    expect(wt.columnUtils.getStretchedColumnWidth(2, 50)).toBe(50);
+    expect(wt.columnUtils.getStretchedColumnWidth(3, 50)).toBe(352);
   });
 
   it('should use custom cell renderer if provided', () => {
@@ -1088,10 +1088,11 @@ describe('WalkontableTable', () => {
       });
       wt.draw();
 
-      expect($('.ht_clone_top_left_corner thead tr th').eq(0).css('border-left-width')).toBe('1px');
-      expect($('.ht_clone_top_left_corner thead tr th').eq(0).css('border-right-width')).toBe('1px');
-      expect($('.ht_clone_top_left_corner thead tr th').eq(1).css('border-left-width')).toBe('1px'); // was 0 before https://github.com/handsontable/handsontable/commit/32c163c6a98903a30daddac7582276d18a12a81a
-      expect($('.ht_clone_top_left_corner thead tr th').eq(1).css('border-right-width')).toBe('1px');
+      let ctx;
+      expect($(ctx = '.ht_clone_top_left_corner thead tr th').eq(0).css('border-left-width')).withContext(`${ctx} LEFT`).toBe('1px');
+      expect($(ctx = '.ht_clone_top_left_corner thead tr th').eq(0).css('border-right-width')).withContext(`${ctx} RIGHT`).toBe('1px');
+      expect($(ctx = '.ht_clone_top_left_corner thead tr th').eq(1).css('border-left-width')).withContext(`${ctx} LEFT`).toBe('0px');
+      expect($(ctx = '.ht_clone_top_left_corner thead tr th').eq(1).css('border-right-width')).withContext(`${ctx} RIGHT`).toBe('1px');
     });
   });
 

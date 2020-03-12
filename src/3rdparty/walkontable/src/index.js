@@ -14,8 +14,8 @@ import TopLeftCornerOverlay from './overlay/topLeftCorner';
 import BottomOverlay from './overlay/bottom';
 import BottomLeftCornerOverlay from './overlay/bottomLeftCorner';
 
-import Border from './border';
-import Walkontable from './core';
+import SelectionHandle from './selectionHandle';
+import Master from './core/master';
 import Event from './event';
 import Overlays from './overlays';
 import Scroll from './scroll';
@@ -26,6 +26,17 @@ import { OrderView, SharedOrderView } from './utils/orderView';
 import Viewport from './viewport';
 import { getListenersCounter } from './../../../eventManager';
 
+import getSvgPathsRenderer, { precalculateStylesAndCommands, compareStrokePriority } from './borderRenderer/svg/pathsRenderer';
+import getSvgResizer from './borderRenderer/svg/resizer';
+import { setCurrentWindowContext, convertCssColorToRGBA, getLuminance, compareLuminance } from './borderRenderer/svg/color';
+
+import { setBrowserMeta } from '../../../helpers/browser';
+import { GRIDLINE_WIDTH } from './utils/gridline';
+
+/**
+ * The export `Walkontable as default` is intended for external use (i.e. In Handsontable). Other named exports
+ * are intended for internal use in Walkontable test suites.
+ */
 export {
   ViewportColumnsCalculator,
   ViewportRowsCalculator,
@@ -44,9 +55,8 @@ export {
   BottomOverlay,
   BottomLeftCornerOverlay,
 
-  Border,
-  Walkontable as default,
-  Walkontable as Core,
+  SelectionHandle,
+  Master as default,
   Event,
   Overlays,
   Scroll,
@@ -57,5 +67,17 @@ export {
   SharedOrderView,
   Viewport,
 
-  getListenersCounter
+  getListenersCounter,
+
+  getSvgPathsRenderer,
+  precalculateStylesAndCommands,
+  getSvgResizer,
+  setCurrentWindowContext,
+  convertCssColorToRGBA,
+  getLuminance,
+  compareLuminance,
+  compareStrokePriority,
+
+  setBrowserMeta,
+  GRIDLINE_WIDTH
 };

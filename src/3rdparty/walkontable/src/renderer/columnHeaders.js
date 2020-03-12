@@ -1,4 +1,4 @@
-import { empty } from './../../../../helpers/dom/element';
+import { empty, addClass } from './../../../../helpers/dom/element';
 import BaseRenderer from './_base';
 
 /**
@@ -25,8 +25,9 @@ export default class ColumnHeadersRenderer extends BaseRenderer {
     const { columnHeadersCount, rowHeadersCount } = this.table;
     let TR = this.rootNode.firstChild;
 
-    if (columnHeadersCount) {
-      const { columnsToRender } = this.table;
+    const { columnsToRender } = this.table;
+
+    if (columnHeadersCount || columnsToRender) {
       const allColumnsToRender = columnsToRender + rowHeadersCount;
 
       for (let i = 0, len = columnHeadersCount; i < len; i++) {
@@ -47,6 +48,7 @@ export default class ColumnHeadersRenderer extends BaseRenderer {
           this.renderedNodes -= 1;
         }
       }
+
       const theadChildrenLength = this.rootNode.childNodes.length;
 
       if (theadChildrenLength > columnHeadersCount) {
@@ -77,6 +79,10 @@ export default class ColumnHeadersRenderer extends BaseRenderer {
         TH.removeAttribute('style');
 
         columnHeaderFunctions[visibleRowIndex](sourceColumnIndex, TH, visibleRowIndex);
+
+        if (sourceColumnIndex < 0) {
+          addClass(TH, 'wtTableCornerCell');
+        }
       }
     }
   }

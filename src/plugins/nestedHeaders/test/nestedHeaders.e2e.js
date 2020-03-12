@@ -579,25 +579,11 @@ describe('NestedHeaders', () => {
       this.$container.find('.ht_clone_top thead tr:eq(2) th:eq(1)').simulate('mousedown');
       this.$container.find('.ht_clone_top thead tr:eq(2) th:eq(1)').simulate('mouseup');
 
-      const $headerLvl3 = this.$container.find('.ht_clone_top thead tr:eq(2) th:eq(1)');
-      const $firstRow = this.$container.find('.ht_master tbody tr:eq(0)');
-      const $lastRow = this.$container.find('.ht_master tbody tr:eq(3)');
-      const $tbody = this.$container.find('.ht_master tbody');
-
-      const $topBorder = this.$container.find('.wtBorder.area').eq(0);
-      const $bottomBorder = this.$container.find('.wtBorder.area').eq(2);
-      const $leftBorder = this.$container.find('.wtBorder.area').eq(1);
-      const $rightBorder = this.$container.find('.wtBorder.area').eq(3);
-
-      expect($topBorder.offset().top).toEqual($firstRow.offset().top - 1);
-      expect($bottomBorder.offset().top).toEqual($lastRow.offset().top + $lastRow.height() - 1);
-      expect($topBorder.width()).toEqual($headerLvl3.width());
-      expect($bottomBorder.width()).toEqual($headerLvl3.width());
-
-      expect($leftBorder.offset().left).toEqual($headerLvl3.offset().left);
-      expect($rightBorder.offset().left).toEqual($headerLvl3.offset().left + $headerLvl3.width());
-      expect($leftBorder.height()).toEqual($tbody.height());
-      expect($rightBorder.height()).toEqual($tbody.height() + 1);
+      // TODO don't test the actual SVG paths in the line below. Rather, check if Walkontable has the correct selection and trust that it renders properly
+      expect(getRenderedBorderPaths(document.body)).toEqual(['M 50 104.5 151 104.5 M 150.5 104 150.5 197 M 50 196.5 151 196.5 M 50.5 104 50.5 197',
+        'M 51 105 101 105 M 100 104 100 128 M 51 127 101 127 M 51 104 51 128',
+        'M 50 104.5 151 104.5 M 150.5 104 150.5 131 M 50.5 104 50.5 131',
+        'M 51 105 101 105 M 100 104 100 131 M 51 130 101 130 M 51 104 51 131']);
     });
   });
 });

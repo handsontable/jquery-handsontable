@@ -8,6 +8,7 @@ import EventManager from './eventManager';
 import {
   deepClone,
   duckSchema,
+  isObject,
   isObjectEqual,
   deepObjectSize,
   hasOwnProperty,
@@ -34,6 +35,7 @@ import { warnUserAboutLanguageRegistration, getValidLanguageCode, normalizeLangu
 import { startObserving as keyStateStartObserving, stopObserving as keyStateStopObserving } from './utils/keyStateObserver';
 import { Selection } from './selection';
 import { MetaManager, DataMap } from './dataMap/index';
+import expandCoordsToRangeIncludingSpans from './utils/rowSpanColSpan';
 
 let activeGuid = null;
 
@@ -154,6 +156,7 @@ export default function Core(rootElement, userSettings, rootInstanceSymbol = fal
     countRows: () => instance.countRows(),
     propToCol: prop => datamap.propToCol(prop),
     isEditorOpened: () => (instance.getActiveEditor() ? instance.getActiveEditor().isOpened() : false),
+    expandCoordsToRangeIncludingSpans: coords => expandCoordsToRangeIncludingSpans(instance, coords)
   });
 
   this.selection = selection;
@@ -223,6 +226,7 @@ export default function Core(rootElement, userSettings, rootInstanceSymbol = fal
     // @TODO: These CSS classes are no longer needed anymore. They are used only as a indicator of the selected
     // rows/columns in the MergedCells plugin (via border.js#L520 in the walkontable module). After fixing
     // the Border class this should be removed.
+    // NOTE: border.js does not exist anymore. It's successor is selectionHandle.js
     if (isSelectedByRowHeader && isSelectedByColumnHeader) {
       addClass(this.rootElement, ['ht__selection--rows', 'ht__selection--columns']);
 
@@ -612,7 +616,7 @@ export default function Core(rootElement, userSettings, rootInstanceSymbol = fal
         });
       }
       if (instance.view) {
-        instance.view.wt.wtOverlays.adjustElementsSize();
+        instance.view.wt.wtOverlays.adjustElementsSizes();
       }
     },
 
@@ -1082,7 +1086,7 @@ export default function Core(rootElement, userSettings, rootInstanceSymbol = fal
     editorManager.lockEditor();
     instance._refreshBorders(null);
     editorManager.unlockEditor();
-    instance.view.wt.wtOverlays.adjustElementsSize();
+    instance.view.wt.wtOverlays.adjustElementsSizes();
     instance.runHooks('afterChange', changes, source || 'edit');
 
     const activeEditor = instance.getActiveEditor();
@@ -1881,6 +1885,14 @@ export default function Core(rootElement, userSettings, rootInstanceSymbol = fal
       }
 
       instance.rootElement.style.width = isNaN(width) ? `${width}` : `${width}px`;
+    }
+
+    if (settings.selectionStyle !== undefined) {
+      if (isObject(settings.selectionStyle)) {
+        this.selection.updateBorderStyle(settings.selectionStyle);
+      } else {
+        throw new Error('The value of the option `selectionStyle` must be an object. To reset `selectionStyle` to the defaults, provide an empty object as the value.');
+      }
     }
 
     if (!init) {

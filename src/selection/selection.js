@@ -1,8 +1,8 @@
-import Highlight, { AREA_TYPE, HEADER_TYPE, CELL_TYPE } from './highlight/highlight';
+import Highlight, { AREA_TYPE, HEADER_TYPE, CELL_TYPE, FILL_TYPE } from './highlight/highlight';
 import SelectionRange from './range';
 import { CellCoords } from './../3rdparty/walkontable/src';
 import { isPressedCtrlKey } from './../utils/keyStateObserver';
-import { createObjectPropListener, mixin } from './../helpers/object';
+import { createObjectPropListener, mixin, isObject } from './../helpers/object';
 import { isUndefined } from './../helpers/mixed';
 import { arrayEach } from './../helpers/array';
 import localHooks from './../mixins/localHooks';
@@ -11,6 +11,7 @@ import {
   detectSelectionType,
   isValidCoord,
   normalizeSelectionFactory,
+  updateBorderStyle,
   SELECTION_TYPE_EMPTY,
   SELECTION_TYPE_UNRECOGNIZED,
 } from './utils';
@@ -74,7 +75,7 @@ class Selection {
       activeHeaderClassName: settings.activeHeaderClassName,
       rowClassName: settings.currentRowClassName,
       columnClassName: settings.currentColClassName,
-      disableHighlight: this.settings.disableVisualSelection,
+      disableHighlight: settings.disableVisualSelection,
       cellCornerVisible: (...args) => this.isCellCornerVisible(...args),
       areaCornerVisible: (...args) => this.isAreaCornerVisible(...args),
     });
@@ -99,6 +100,36 @@ class Selection {
     this.transformation.addLocalHook('afterTransformEnd', (...args) => this.runLocalHooks('afterModifyTransformEnd', ...args));
     this.transformation.addLocalHook('insertRowRequire', (...args) => this.runLocalHooks('insertRowRequire', ...args));
     this.transformation.addLocalHook('insertColRequire', (...args) => this.runLocalHooks('insertColRequire', ...args));
+  }
+
+  /**
+   * Updates the border style class prototype of the cell, area and fill type selection
+   * instances with new configuration. Possible properties which can be changed are
+   * `borderWidth` and `borderColor`.
+   *
+   * @example
+   * ```js
+   * {
+   *   cell: {
+   *     borderColor: 'pink',
+   *   },
+   *   fill: {
+   *     borderWidth: 2,
+   *   },
+   *   area: {
+   *     borderColor: 'blue',
+   *   },
+   * }
+   * ```
+   * @param {object} borderStyles Object with properties that configure selection styles.
+   */
+  updateBorderStyle(borderStyles) {
+    arrayEach([CELL_TYPE, AREA_TYPE, FILL_TYPE], (fillType) => {
+      // if the provided value is not an object, fall back to use an empty object, which sets all styles to default
+      const borderStylesForType = isObject(borderStyles[fillType]) ? borderStyles[fillType] : {};
+
+      updateBorderStyle(this.highlight.getCommonBorderStyle(fillType), borderStylesForType);
+    });
   }
 
   /**
@@ -219,7 +250,9 @@ class Selection {
     this.highlight.getCell().clear();
 
     if (this.highlight.isEnabledFor(CELL_TYPE)) {
-      this.highlight.getCell().add(this.selectedRange.current().highlight);
+      const range = this.tableProps.expandCoordsToRangeIncludingSpans(this.selectedRange.current().highlight);
+
+      this.highlight.getCell().add(range.from).add(range.to);
     }
 
     const layerLevel = this.getLayerLevel();

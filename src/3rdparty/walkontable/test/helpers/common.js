@@ -41,6 +41,7 @@ export function spec() {
  */
 export function walkontable(options, table) {
   const currentSpec = spec();
+  const WalkontableDefault = Walkontable.default; // default export of core.js
 
   if (!table) {
     table = currentSpec.$table[0];
@@ -48,7 +49,7 @@ export function walkontable(options, table) {
 
   options.table = table;
 
-  currentSpec.wotInstance = new Walkontable.Core(options);
+  currentSpec.wotInstance = new WalkontableDefault(options);
 
   return currentSpec.wotInstance;
 }
@@ -150,7 +151,7 @@ beforeEach(function() {
             pass: actualHTML === expectedHTML,
           };
 
-          result.message = `Expected ${actualHTML} NOT to be ${expectedHTML}`;
+          result.message = `Expected ${actualHTML} to be equal HTML to ${expectedHTML}`;
 
           return result;
         }
@@ -240,6 +241,9 @@ export function createSelectionController({ current, area, fill, custom } = {}) 
     border: {
       width: 2,
       color: '#4b89ff',
+      cornerVisible() {
+        return true;
+      }
     },
   });
   const areaCtrl = area || new Walkontable.Selection({
@@ -271,13 +275,13 @@ export function createSelectionController({ current, area, fill, custom } = {}) 
     getFill() {
       return fillCtrl;
     },
-    [Symbol.iterator]() {
+    getAll() {
       return [
         fillCtrl,
         currentCtrl,
         areaCtrl,
         ...customCtrl,
-      ][Symbol.iterator]();
+      ];
     },
   };
 }
@@ -414,4 +418,54 @@ export function expectWtTable(wt, callb, name) {
   }
 
   return expect(callb(wt.wtOverlays[`${name}Overlay`].clone.wtTable)).withContext(`${name}: ${callbAsString}`);
+}
+
+/**
+ * Returns all SVG <path> elements within the parent. The items order
+ * matches the rendered order (equivalent of "z-index").
+ *
+ * @param {HTMLElement} parentElem HTML element.
+ * @returns {Array.<HTMLElement>}
+ */
+function getSvgPaths(parentElem) {
+  return Array.from(parentElem.querySelectorAll('.wtSpreader svg path'));
+}
+
+/**
+ * Returns path command for all SVG <path> elements within the parent.
+ *
+ * @param {HTMLElement} parentElem HTML element.
+ * @returns {string[]} Array of "d" attributes found in SVG paths within parentElem.
+ */
+export function getRenderedBorderPaths(parentElem) {
+  if (!parentElem || !parentElem.querySelectorAll) {
+    return null;
+  }
+  const paths = getSvgPaths(parentElem).map(x => x.getAttribute('d'));
+
+  return paths;
+}
+
+/**
+ * Returns information about the existence of path command for all SVG <path> elements within the parent.
+ *
+ * @param {HTMLElement} parentElem HTML element.
+ * @returns {boolean[]} Array of boolean true or false for all SVG paths within parentElem, depending whether the path has a non-empty path.
+ */
+export function getRenderedBorderPathExistence(parentElem) {
+  const paths = getSvgPaths(parentElem).map(x => !!x.getAttribute('d'));
+
+  return paths;
+}
+
+/**
+ * Returns stroke style for all SVG <path> elements within the parent.
+ *
+ * @param {HTMLElement} parentElem HTML element.
+ * @returns {string[]} Returns array of stroke information stored in a data attribute.
+ */
+export function getRenderedBorderStyles(parentElem) {
+  const paths = getSvgPaths(parentElem).map(x => x.getAttribute('data-stroke-style'));
+
+  return paths;
 }

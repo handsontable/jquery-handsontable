@@ -32,7 +32,7 @@ describe('IndexMapper', () => {
     expect(changeCallback.calls.count()).toEqual(1);
   });
 
-  it('should register map to proper collection when it is possible', () => {
+  it('should register map to a proper collection when it is possible', () => {
     const indexMapper = new IndexMapper();
     const skipMap = new SkipMap();
     const indexToValueMap = new IndexToValueMap();
@@ -65,7 +65,7 @@ describe('IndexMapper', () => {
     indexMapper.unregisterMap('uniqueName2');
   });
 
-  it('should unregister map', () => {
+  it('should unregister a map', () => {
     const indexMapper = new IndexMapper();
     const skipMap = new SkipMap();
 
@@ -82,7 +82,7 @@ describe('IndexMapper', () => {
     expect(indexMapper.skipMapsCollection.getLength()).toBe(0);
   });
 
-  it('should handle `Skip` map properly', () => {
+  it('should handle the `Skip` map properly', () => {
     const indexMapper = new IndexMapper();
     const skipMap = new SkipMap();
     const changeCallback = jasmine.createSpy('change');
@@ -167,173 +167,176 @@ describe('IndexMapper', () => {
     indexMapper.unregisterMap('skipMap', skipMap);
   });
 
-  describe('removing indexes', () => {
-    it('should remove multiple indexes from the start', () => {
-      const indexMapper = new IndexMapper();
-      const indexToIndexMap = new IndexToIndexMap();
-      const indexToValueMap = new IndexToValueMap(index => index + 2);
-      const skipMap = new SkipMap();
+  describe('removing items', () => {
+    describe('with skipped indexes', () => {
+      it('should remove multiple items from the start', () => {
+        const indexMapper = new IndexMapper();
+        const indexToIndexMap = new IndexToIndexMap();
+        const indexToValueMap = new IndexToValueMap(index => index + 2);
+        const skipMap = new SkipMap();
 
-      indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
-      indexMapper.registerMap('indexToValueMap', indexToValueMap);
-      indexMapper.registerMap('skipMap', skipMap);
-      indexMapper.initToLength(10);
-      skipMap.setValues([true, false, true, false, true, false, true, false, true, false]);
+        indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
+        indexMapper.registerMap('indexToValueMap', indexToValueMap);
+        indexMapper.registerMap('skipMap', skipMap);
+        indexMapper.initToLength(10);
+        skipMap.setValues([true, false, true, false, true, false, true, false, true, false]);
 
-      indexMapper.removeIndexes([0, 1, 2]);
+        indexMapper.removeIndexes([0, 1, 2]);
 
-      expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6]);
-      expect(indexMapper.getNotSkippedIndexes()).toEqual([0, 2, 4, 6]);
-      // Next values (indexes) are recounted (re-indexed).
-      expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6]);
-      // Next values are just preserved, they aren't counted again.
-      expect(indexToValueMap.getValues()).toEqual([5, 6, 7, 8, 9, 10, 11]);
-      expect(skipMap.getValues()).toEqual([false, true, false, true, false, true, false]);
+        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6]);
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([0, 2, 4, 6]);
+        // Next values (indexes) are recounted (re-indexed).
+        expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6]);
+        // Next values are just preserved.
+        expect(indexToValueMap.getValues()).toEqual([5, 6, 7, 8, 9, 10, 11]);
+        expect(skipMap.getValues()).toEqual([false, true, false, true, false, true, false]);
 
-      indexMapper.unregisterMap('indexToIndexMap');
-      indexMapper.unregisterMap('indexToValueMap');
-      indexMapper.unregisterMap('skipMap');
-    });
+        indexMapper.unregisterMap('indexToIndexMap');
+        indexMapper.unregisterMap('indexToValueMap');
+        indexMapper.unregisterMap('skipMap');
+      });
 
-    it('should remove multiple indexes from the middle', () => {
-      const indexMapper = new IndexMapper();
-      const indexToIndexMap = new IndexToIndexMap();
-      const indexToValueMap = new IndexToValueMap(index => index + 2);
-      const skipMap = new SkipMap();
+      it('should remove multiple items from the middle', () => {
+        const indexMapper = new IndexMapper();
+        const indexToIndexMap = new IndexToIndexMap();
+        const indexToValueMap = new IndexToValueMap(index => index + 2);
+        const skipMap = new SkipMap();
 
-      indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
-      indexMapper.registerMap('indexToValueMap', indexToValueMap);
-      indexMapper.registerMap('skipMap', skipMap);
-      indexMapper.initToLength(10);
-      skipMap.setValues([true, false, true, false, true, false, true, false, true, false]);
+        indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
+        indexMapper.registerMap('indexToValueMap', indexToValueMap);
+        indexMapper.registerMap('skipMap', skipMap);
+        indexMapper.initToLength(10);
+        skipMap.setValues([true, false, true, false, true, false, true, false, true, false]);
 
-      indexMapper.removeIndexes([4, 5]);
+        indexMapper.removeIndexes([4, 5]);
 
-      expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
-      expect(indexMapper.getNotSkippedIndexes()).toEqual([1, 3, 5, 7]);
-      // Next values (indexes) are recounted (re-indexed).
-      expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
-      // Next values are just preserved, they aren't counted again.
-      expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 5, 8, 9, 10, 11]);
-      expect(skipMap.getValues()).toEqual([true, false, true, false, true, false, true, false]);
+        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([1, 3, 5, 7]);
+        // Next values (indexes) are recounted (re-indexed).
+        expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+        // Next values are just preserved.
+        expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 5, 8, 9, 10, 11]);
+        expect(skipMap.getValues()).toEqual([true, false, true, false, true, false, true, false]);
 
-      indexMapper.unregisterMap('indexToIndexMap');
-      indexMapper.unregisterMap('indexToValueMap');
-      indexMapper.unregisterMap('skipMap');
-    });
+        indexMapper.unregisterMap('indexToIndexMap');
+        indexMapper.unregisterMap('indexToValueMap');
+        indexMapper.unregisterMap('skipMap');
+      });
 
-    it('should remove multiple indexes from the end', () => {
-      const indexMapper = new IndexMapper();
-      const indexToIndexMap = new IndexToIndexMap();
-      const indexToValueMap = new IndexToValueMap(index => index + 2);
-      const skipMap = new SkipMap();
+      it('should remove multiple items from the end', () => {
+        const indexMapper = new IndexMapper();
+        const indexToIndexMap = new IndexToIndexMap();
+        const indexToValueMap = new IndexToValueMap(index => index + 2);
+        const skipMap = new SkipMap();
 
-      indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
-      indexMapper.registerMap('indexToValueMap', indexToValueMap);
-      indexMapper.registerMap('skipMap', skipMap);
-      indexMapper.initToLength(10);
-      skipMap.setValues([true, false, true, false, true, false, true, false, true, false]);
+        indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
+        indexMapper.registerMap('indexToValueMap', indexToValueMap);
+        indexMapper.registerMap('skipMap', skipMap);
+        indexMapper.initToLength(10);
+        skipMap.setValues([true, false, true, false, true, false, true, false, true, false]);
 
-      indexMapper.removeIndexes([8, 9]);
+        indexMapper.removeIndexes([8, 9]);
 
-      expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
-      expect(indexMapper.getNotSkippedIndexes()).toEqual([1, 3, 5, 7]);
-      // Next values (indexes) are recounted (re-indexed).
-      expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
-      // Next values are just preserved, they aren't counted again.
-      expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
-      expect(skipMap.getValues()).toEqual([true, false, true, false, true, false, true, false]);
+        // Items from the end was removed, no re-indexation.
+        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([1, 3, 5, 7]);
+        // Items from the end was removed, no re-indexation.
+        expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+        // Items from the end was removed.
+        expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
+        expect(skipMap.getValues()).toEqual([true, false, true, false, true, false, true, false]);
 
-      indexMapper.unregisterMap('indexToIndexMap');
-      indexMapper.unregisterMap('indexToValueMap');
-      indexMapper.unregisterMap('skipMap');
-    });
+        indexMapper.unregisterMap('indexToIndexMap');
+        indexMapper.unregisterMap('indexToValueMap');
+        indexMapper.unregisterMap('skipMap');
+      });
 
-    it('should remove multiple indexes with mixed order #1', () => {
-      const indexMapper = new IndexMapper();
-      const indexToIndexMap = new IndexToIndexMap();
-      const indexToValueMap = new IndexToValueMap(index => index + 2);
-      const skipMap = new SkipMap();
+      it('should remove multiple items with mixed order #1', () => {
+        const indexMapper = new IndexMapper();
+        const indexToIndexMap = new IndexToIndexMap();
+        const indexToValueMap = new IndexToValueMap(index => index + 2);
+        const skipMap = new SkipMap();
 
-      indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
-      indexMapper.registerMap('indexToValueMap', indexToValueMap);
-      indexMapper.registerMap('skipMap', skipMap);
-      indexMapper.initToLength(10);
-      skipMap.setValues([true, false, true, false, true, false, true, false, true, false]);
+        indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
+        indexMapper.registerMap('indexToValueMap', indexToValueMap);
+        indexMapper.registerMap('skipMap', skipMap);
+        indexMapper.initToLength(10);
+        skipMap.setValues([true, false, true, false, true, false, true, false, true, false]);
 
-      indexMapper.removeIndexes([0, 1, 3, 5]);
+        indexMapper.removeIndexes([0, 1, 3, 5]);
 
-      expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5]);
-      expect(indexMapper.getNotSkippedIndexes()).toEqual([3, 5]);
-      // Next values (indexes) are recounted (re-indexed).
-      expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5]);
-      // Next values are just preserved, they aren't counted again.
-      expect(indexToValueMap.getValues()).toEqual([4, 6, 8, 9, 10, 11]);
-      expect(skipMap.getValues()).toEqual([true, true, true, false, true, false]);
+        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5]);
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([3, 5]);
+        // Next values (indexes) are recounted (re-indexed).
+        expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5]);
+        // Next values are just preserved.
+        expect(indexToValueMap.getValues()).toEqual([4, 6, 8, 9, 10, 11]);
+        expect(skipMap.getValues()).toEqual([true, true, true, false, true, false]);
 
-      indexMapper.unregisterMap('indexToIndexMap');
-      indexMapper.unregisterMap('indexToValueMap');
-      indexMapper.unregisterMap('skipMap');
-    });
+        indexMapper.unregisterMap('indexToIndexMap');
+        indexMapper.unregisterMap('indexToValueMap');
+        indexMapper.unregisterMap('skipMap');
+      });
 
-    it('should remove multiple indexes with mixed order #2', () => {
-      const indexMapper = new IndexMapper();
-      const indexToIndexMap = new IndexToIndexMap();
-      const indexToValueMap = new IndexToValueMap(index => index + 2);
-      const skipMap = new SkipMap();
+      it('should remove multiple items with mixed order #2', () => {
+        const indexMapper = new IndexMapper();
+        const indexToIndexMap = new IndexToIndexMap();
+        const indexToValueMap = new IndexToValueMap(index => index + 2);
+        const skipMap = new SkipMap();
 
-      indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
-      indexMapper.registerMap('indexToValueMap', indexToValueMap);
-      indexMapper.registerMap('skipMap', skipMap);
-      indexMapper.initToLength(10);
-      skipMap.setValues([true, false, true, false, true, false, true, false, true, false]);
+        indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
+        indexMapper.registerMap('indexToValueMap', indexToValueMap);
+        indexMapper.registerMap('skipMap', skipMap);
+        indexMapper.initToLength(10);
+        skipMap.setValues([true, false, true, false, true, false, true, false, true, false]);
 
-      indexMapper.removeIndexes([5, 3, 1, 0]);
+        indexMapper.removeIndexes([5, 3, 1, 0]);
 
-      expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5]);
-      expect(indexMapper.getNotSkippedIndexes()).toEqual([3, 5]);
-      // Next values (indexes) are recounted (re-indexed).
-      expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5]);
-      // Next values are just preserved, they aren't counted again.
-      expect(indexToValueMap.getValues()).toEqual([4, 6, 8, 9, 10, 11]);
-      expect(skipMap.getValues()).toEqual([true, true, true, false, true, false]);
+        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5]);
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([3, 5]);
+        // Next values (indexes) are recounted (re-indexed).
+        expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5]);
+        // Next values are just preserved.
+        expect(indexToValueMap.getValues()).toEqual([4, 6, 8, 9, 10, 11]);
+        expect(skipMap.getValues()).toEqual([true, true, true, false, true, false]);
 
-      indexMapper.unregisterMap('indexToIndexMap');
-      indexMapper.unregisterMap('indexToValueMap');
-      indexMapper.unregisterMap('skipMap');
-    });
+        indexMapper.unregisterMap('indexToIndexMap');
+        indexMapper.unregisterMap('indexToValueMap');
+        indexMapper.unregisterMap('skipMap');
+      });
 
-    it('should remove multiple indexes with mixed order #3', () => {
-      const indexMapper = new IndexMapper();
-      const indexToIndexMap = new IndexToIndexMap();
-      const indexToValueMap = new IndexToValueMap(index => index + 2);
-      const skipMap = new SkipMap();
+      it('should remove multiple items with mixed order #3', () => {
+        const indexMapper = new IndexMapper();
+        const indexToIndexMap = new IndexToIndexMap();
+        const indexToValueMap = new IndexToValueMap(index => index + 2);
+        const skipMap = new SkipMap();
 
-      indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
-      indexMapper.registerMap('indexToValueMap', indexToValueMap);
-      indexMapper.registerMap('skipMap', skipMap);
-      indexMapper.initToLength(10);
-      skipMap.setValues([true, false, true, false, true, false, true, false, true, false]);
+        indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
+        indexMapper.registerMap('indexToValueMap', indexToValueMap);
+        indexMapper.registerMap('skipMap', skipMap);
+        indexMapper.initToLength(10);
+        skipMap.setValues([true, false, true, false, true, false, true, false, true, false]);
 
-      indexMapper.removeIndexes([0, 5, 3, 1]);
+        indexMapper.removeIndexes([0, 5, 3, 1]);
 
-      expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5]);
-      expect(indexMapper.getNotSkippedIndexes()).toEqual([3, 5]);
-      // Next values (indexes) are recounted (re-indexed).
-      expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5]);
-      // Next values are just preserved, they aren't counted again.
-      expect(indexToValueMap.getValues()).toEqual([4, 6, 8, 9, 10, 11]);
-      expect(skipMap.getValues()).toEqual([true, true, true, false, true, false]);
+        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5]);
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([3, 5]);
+        // Next values (indexes) are recounted (re-indexed).
+        expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5]);
+        // Next values are just preserved.
+        expect(indexToValueMap.getValues()).toEqual([4, 6, 8, 9, 10, 11]);
+        expect(skipMap.getValues()).toEqual([true, true, true, false, true, false]);
 
-      indexMapper.unregisterMap('indexToIndexMap');
-      indexMapper.unregisterMap('indexToValueMap');
-      indexMapper.unregisterMap('skipMap');
+        indexMapper.unregisterMap('indexToIndexMap');
+        indexMapper.unregisterMap('indexToValueMap');
+        indexMapper.unregisterMap('skipMap');
+      });
     });
   });
 
-  describe('inserting indexes', () => {
+  describe('inserting items', () => {
     describe('without skipped indexes', () => {
-      it('should insert multiple indexes at the start', () => {
+      it('should insert multiple items at the start', () => {
         const indexMapper = new IndexMapper();
         const indexToIndexMap = new IndexToIndexMap();
         const indexToValueMap = new IndexToValueMap(index => index + 2);
@@ -344,17 +347,24 @@ describe('IndexMapper', () => {
 
         indexMapper.insertIndexes(0, 3);
 
+        // Next values (indexes) are recounted (re-indexed).
+        //                                         inserted items   recounted indexes (+3 added for each original one)
+        //                                                /  |  \  /  |  |  |  |  |  |  |   |   \
         expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
         // Next values (indexes) are recounted (re-indexed).
+        //                                    inserted items   recounted indexes (+3 added for each original one)
+        //                                           /  |  \  /  |  |  |  |  |  |  |   |   \
         expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-        // Next values are just preserved, they aren't counted again.
+        // Next values are just preserved.
+        //                                    inserted items          shifted items
+        //                                           /  |  \  /  |  |  |  |  |  |  |  |  \
         expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 
         indexMapper.unregisterMap('indexToIndexMap');
         indexMapper.unregisterMap('indexToValueMap');
       });
 
-      it('should insert multiple indexes at the middle', () => {
+      it('should insert multiple items in the middle', () => {
         const indexMapper = new IndexMapper();
         const indexToIndexMap = new IndexToIndexMap();
         const indexToValueMap = new IndexToValueMap(index => index + 2);
@@ -365,17 +375,24 @@ describe('IndexMapper', () => {
 
         indexMapper.insertIndexes(4, 3);
 
+        // Next values (indexes) are recounted (re-indexed).
+        //                                                     inserted items  recounted indexes (+3 added for each original one)
+        //                                                            /  |  \  /  |  |  |   |   \
         expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
         // Next values (indexes) are recounted (re-indexed).
+        //                                                inserted items  recounted indexes (+3 added for each original one)
+        //                                                       /  |  \  /  |  |   |  |   \
         expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-        // Next values are just preserved, they aren't counted again.
+        // Next values are just preserved.
+        //                                                inserted items    shifted items
+        //                                                       /  |  \  /  |  |  |  |   \
         expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 5, 6, 7, 8, 6, 7, 8, 9, 10, 11]);
 
         indexMapper.unregisterMap('indexToIndexMap');
         indexMapper.unregisterMap('indexToValueMap');
       });
 
-      it('should insert multiple indexes next to the end', () => {
+      it('should insert multiple items next to the end', () => {
         const indexMapper = new IndexMapper();
         const indexToIndexMap = new IndexToIndexMap();
         const indexToValueMap = new IndexToValueMap(index => index + 2);
@@ -386,17 +403,24 @@ describe('IndexMapper', () => {
 
         indexMapper.insertIndexes(9, 3);
 
+        // Next values (indexes) are recounted (re-indexed).
+        //                                                                    inserted items   recounted index (+3 added for each original one)
+        //                                                                           /  |  \     |
         expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
         // Next values (indexes) are recounted (re-indexed).
+        //                                                               inserted items   recounted index (+3 added for each original one)
+        //                                                                      /  |  \     |
         expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-        // Next values are just preserved, they aren't counted again.
+        // Next values are just preserved.
+        //                                                                 inserted items  shifted item
+        //                                                                        /  |  \     |
         expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 11]);
 
         indexMapper.unregisterMap('indexToIndexMap');
         indexMapper.unregisterMap('indexToValueMap');
       });
 
-      it('should insert multiple indexes at the end (index equal to the length of maps)', () => {
+      it('should insert multiple items at the end (insert position equal to the length of maps)', () => {
         const indexMapper = new IndexMapper();
         const indexToIndexMap = new IndexToIndexMap();
         const indexToValueMap = new IndexToValueMap(index => index + 2);
@@ -407,17 +431,24 @@ describe('IndexMapper', () => {
 
         indexMapper.insertIndexes(10, 3);
 
+        // Just adding new items at the end.
+        //                                                                            inserted items
+        //                                                                               /  |  \
         expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-        // Next values (indexes) are recounted (re-indexed).
+        // Just adding new items at the end.
+        //                                                                       inserted items
+        //                                                                          /  |  \
         expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-        // Next values are just preserved, they aren't counted again.
+        // Just adding new items at the end.
+        //                                                                         inserted items
+        //                                                                            /  |  \
         expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
 
         indexMapper.unregisterMap('indexToIndexMap');
         indexMapper.unregisterMap('indexToValueMap');
       });
 
-      it('should insert multiple indexes at the end (index higher than length of maps)', () => {
+      it('should insert multiple items at the end (insert position higher than length of maps)', () => {
         const indexMapper = new IndexMapper();
         const indexToIndexMap = new IndexToIndexMap();
         const indexToValueMap = new IndexToValueMap(index => index + 2);
@@ -428,95 +459,93 @@ describe('IndexMapper', () => {
 
         indexMapper.insertIndexes(12, 3);
 
+        // Just adding new items at the end.
+        //                                                                             inserted items
+        //                                                                                /  |  \
         expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-        // Next values (indexes) are recounted (re-indexed).
+        // Just adding new items at the end.
+        //                                                                        inserted items
+        //                                                                           /  |  \
         expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-        // Next values are just preserved, they aren't counted again.
+        // Just adding new items at the end.
+        //                                                                          inserted items
+        //                                                                             /  |  \
         expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
 
         indexMapper.unregisterMap('indexToIndexMap');
         indexMapper.unregisterMap('indexToValueMap');
       });
 
-      it('should insert index properly when starting sequence of indexes is from `n` to `0`, where `n` is number of indexes minus 1', () => {
+      it('should insert item properly when starting sequence of indexes is from `n` to `0`, where `n` is number of indexes minus 1', () => {
         const indexMapper = new IndexMapper();
 
         indexMapper.initToLength(5);
         indexMapper.setIndexesSequence([4, 3, 2, 1, 0]);
         indexMapper.insertIndexes(1, 1);
 
-        // Index was inserted before 4th element (inserted index "is sticked" to next adjacent element).
+        // Inserted item will be placed at the 1st visual position. At 1st visual position there is already element with index 3.
+        // Newly created item will get index of the originally existing item and will shift all "next elements" (with next indexes).
+        // Thus, all items with original indexes >= 3 will get indexes increased by 1.
+
+        // Appointed index: 3, Items with "starting indexes" >= 3 increased.
+        //
+        //                                                   +---------------- inserted item with appointed index 3
+        //                                                   |
+        //                                                +------------------- increased indexes of items (originally indexes 4, 3)
+        //                                                |  |  |
+        //                                                |  |  |
         expect(indexMapper.getIndexesSequence()).toEqual([5, 3, 4, 2, 1, 0]);
 
         indexMapper.insertIndexes(0, 1);
 
-        // Index was inserted before 6th element (inserted index "is sticked" to next adjacent element).
+        // Appointed index: 5, Items with "starting indexes" >= 5 increased.
         expect(indexMapper.getIndexesSequence()).toEqual([5, 6, 3, 4, 2, 1, 0]);
 
         indexMapper.insertIndexes(7, 1);
 
+        // Appointed index: 7, no items with "starting indexes" >= 7.
         expect(indexMapper.getIndexesSequence()).toEqual([5, 6, 3, 4, 2, 1, 0, 7]);
       });
     });
 
     describe('with skipped indexes', () => {
-      it('should insert insert properly then adding it on position of skipped index', () => {
+      it('should not reindex skipped indexes in the specific situation', () => {
         const indexMapper = new IndexMapper();
-        const indexToIndexMap = new IndexToIndexMap();
-        const indexToValueMap = new IndexToValueMap(index => index + 2);
         const skipMap = new SkipMap();
 
-        indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
-        indexMapper.registerMap('indexToValueMap', indexToValueMap);
-        indexMapper.registerMap('skipMap', skipMap);
-        indexMapper.initToLength(10);
-        skipMap.setValues([false, false, false, true, false, false, false, false, false, false]);
-
-        indexMapper.insertIndexes(3, 1);
-
-        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-        expect(indexMapper.getNotSkippedIndexes()).toEqual([0, 1, 2, 4, 5, 6, 7, 8, 9, 10]);
-        // Next values (indexes) are recounted (re-indexed).
-        expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-        // Next values are just preserved, they aren't counted again. Element is inserted at 4th position (before 5th element, because third element is skipped).
-        expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 5, 6, 6, 7, 8, 9, 10, 11]);
-        expect(skipMap.getValues()).toEqual([false, false, false, true, false, false, false, false, false, false, false]);
-
-        indexMapper.unregisterMap('indexToIndexMap');
-        indexMapper.unregisterMap('indexToValueMap');
-        indexMapper.unregisterMap('skipMap');
-      });
-
-      it('should insert indexes properly when just some indexes skipped (not reindexing skipped indexes)', () => {
-        const indexMapper = new IndexMapper();
-        const indexToIndexMap = new IndexToIndexMap();
-        const indexToValueMap = new IndexToValueMap(index => index + 2);
-        const skipMap = new SkipMap();
-
-        indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
-        indexMapper.registerMap('indexToValueMap', indexToValueMap);
         indexMapper.registerMap('skipMap', skipMap);
         indexMapper.initToLength(10);
         skipMap.setValues([true, true, true, true, false, false, false, false, false, false]);
 
-        expect(indexMapper.getNotSkippedIndexes()).toEqual([4, 5, 6, 7, 8, 9]); // skipped indexes: 0, 1, 2, 3 <----------------------
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([4, 5, 6, 7, 8, 9]); // skipped indexes: 0, 1, 2, 3 <---
 
         indexMapper.insertIndexes(0, 3);
 
-        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-        expect(indexMapper.getNotSkippedIndexes()).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12]); // skipped indexes: 0, 1, 2, 3 <----------------------
-        // // Next values (indexes) are recounted (re-indexed).
-        expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-        // // Next values are just preserved, they aren't counted again.
-        expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 5, 6, 7, 8, 6, 7, 8, 9, 10, 11]);
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12]); // skipped indexes: 0, 1, 2, 3 <---
         expect(skipMap.getValues()).toEqual([true, true, true, true, false, false, false, false, false, false, false, false, false]);
 
-        indexMapper.unregisterMap('indexToIndexMap');
-        indexMapper.unregisterMap('indexToValueMap');
         indexMapper.unregisterMap('skipMap');
       });
 
-      it('should insert indexes properly when just some indexes skipped (reindexing skipped indexes)', () => {
+      it('should reindex skipped indexes', () => {
+        const indexMapper = new IndexMapper();
+        const skipMap = new SkipMap();
+
+        indexMapper.registerMap('skipMap', skipMap);
+        indexMapper.initToLength(10);
+        skipMap.setValues([false, false, false, false, false, false, true, true, true, true]);
+
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([0, 1, 2, 3, 4, 5]); // skipped indexes: 6, 7, 8, 9 <---
+
+        indexMapper.insertIndexes(0, 3);
+
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]); // skipped indexes: 9, 10, 11, 12 <---
+        expect(skipMap.getValues()).toEqual([false, false, false, false, false, false, false, false, false, true, true, true, true]);
+
+        indexMapper.unregisterMap('skipMap');
+      });
+
+      it('should insert item properly when adding it on the position of an skipped index - actually placing it just after the skipped indexes', () => {
         const indexMapper = new IndexMapper();
         const indexToIndexMap = new IndexToIndexMap();
         const indexToValueMap = new IndexToValueMap(index => index + 2);
@@ -526,26 +555,70 @@ describe('IndexMapper', () => {
         indexMapper.registerMap('indexToValueMap', indexToValueMap);
         indexMapper.registerMap('skipMap', skipMap);
         indexMapper.initToLength(10);
-        skipMap.setValues([false, false, false, false, false, false, true, true, true, true]);
+        skipMap.setValues([false, false, false, true, true, false, false, false, false, false]);
 
-        expect(indexMapper.getNotSkippedIndexes()).toEqual([0, 1, 2, 3, 4, 5]); // skipped indexes: 6, 7, 8, 9 <----------------------
+        // Element is inserted at 5th position (before 6th element, because 3rd and 4th elements are skipped).
+        indexMapper.insertIndexes(3, 1);
 
-        indexMapper.insertIndexes(0, 3);
+        // Next values (indexes) are recounted (re-indexed).
+        //                                   inserted item ------------+   recounted indexes (+1 added for each original one)
+        //                                   (2 skipped indexes before) \   /  |  |  |  \
+        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([0, 1, 2, 5, 6, 7, 8, 9, 10]);
 
-        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-        expect(indexMapper.getNotSkippedIndexes()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]); // skipped indexes: 9, 10, 11, 12 <----------------------
-        // // Next values (indexes) are recounted (re-indexed).
-        expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-        // // Next values are just preserved, they aren't counted again.
-        expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-        expect(skipMap.getValues()).toEqual([false, false, false, false, false, false, false, false, false, true, true, true, true]);
+        // Next values (indexes) are recounted (re-indexed).
+        //                              inserted item ------------+   recounted indexes (+1 added for each original one)
+        //                              (2 skipped indexes before) \   /  |  |  |  \
+        expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+        // Next values are just preserved.
+        //                               inserted item ------------+      shifted items
+        //                               (2 skipped indexes before) \   /  |  |  |  \
+        expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 5, 6, 7, 7, 8, 9, 10, 11]);
+        expect(skipMap.getValues()).toEqual([false, false, false, true, true, false, false, false, false, false, false]);
 
         indexMapper.unregisterMap('indexToIndexMap');
         indexMapper.unregisterMap('indexToValueMap');
         indexMapper.unregisterMap('skipMap');
       });
 
-      it('should insert indexes properly when all indexes are skipped', () => {
+      it('should insert item properly then adding it on the position just before an skipped index', () => {
+        const indexMapper = new IndexMapper();
+        const indexToIndexMap = new IndexToIndexMap();
+        const indexToValueMap = new IndexToValueMap(index => index + 2);
+        const skipMap = new SkipMap();
+
+        indexMapper.registerMap('indexToIndexMap', indexToIndexMap);
+        indexMapper.registerMap('indexToValueMap', indexToValueMap);
+        indexMapper.registerMap('skipMap', skipMap);
+        indexMapper.initToLength(10);
+        skipMap.setValues([false, false, false, true, true, false, false, false, false, false]);
+
+        indexMapper.insertIndexes(2, 1);
+
+        // Next values (indexes) are recounted (re-indexed).
+        //                         inserted item -------------+   recounted indexes (+1 added for eacqh original one)
+        //                         (no skipped indexes before) \   /  |  |  |  |  |  |  \
+        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([0, 1, 2, 3, 6, 7, 8, 9, 10]);
+
+        // Next values (indexes) are recounted (re-indexed).
+        //                    inserted item -------------+   recounted indexes (+1 added for each original one)
+        //                    (no skipped indexes before) \   /  |  |  |  |  |  |  \
+        expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
+        // Next values are just preserved.
+        //                    inserted item -------------+         shifted items
+        //                    (no skipped indexes before) \   /  |  |  |  |  |  |  \
+        expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 11]);
+        expect(skipMap.getValues()).toEqual([false, false, false, false, true, true, false, false, false, false, false]);
+
+        indexMapper.unregisterMap('indexToIndexMap');
+        indexMapper.unregisterMap('indexToValueMap');
+        indexMapper.unregisterMap('skipMap');
+      });
+
+      it('should insert items properly when all indexes are skipped', () => {
         const indexMapper = new IndexMapper();
         const indexToIndexMap = new IndexToIndexMap();
         const indexToValueMap = new IndexToValueMap(index => index + 2);
@@ -559,19 +632,26 @@ describe('IndexMapper', () => {
 
         indexMapper.insertIndexes(0, 3);
 
+        // Just adding new items at the end.
+        //                                                                            inserted items
+        //                                                                               /  |  \
         expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
         expect(indexMapper.getNotSkippedIndexes()).toEqual([10, 11, 12]);
-        // // Next values (indexes) are recounted (re-indexed).
+        // Just adding new items at the end.
+        //                                                                       inserted items
+        //                                                                          /  |  \
         expect(indexToIndexMap.getValues()).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-        // // Next values are just preserved, they aren't counted again.
+        // Just adding new items at the end.
+        //                                                                         inserted items
+        //                                                                            /  |  \
         expect(indexToValueMap.getValues()).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
         expect(skipMap.getValues()).toEqual([true, true, true, true, true, true, true, true, true, true, false, false, false]);
       });
     });
   });
 
-  describe('moving indexes', () => {
-    it('should move single, given index', () => {
+  describe('moving items', () => {
+    it('should move single, given item', () => {
       const indexMapper = new IndexMapper();
       indexMapper.initToLength(10);
 
@@ -582,7 +662,7 @@ describe('IndexMapper', () => {
       expect(indexMapper.getIndexesSequence()).toEqual([8, 2, 4, 0, 1, 3, 5, 6, 7, 9]);
     });
 
-    it('should not change order of indexes after specific move', () => {
+    it('should not change order of items after specific move', () => {
       const indexMapper = new IndexMapper();
       indexMapper.initToLength(10);
 
@@ -611,7 +691,7 @@ describe('IndexMapper', () => {
       indexMapper.moveIndexes([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], -1);
     });
 
-    it('should change order of indexes in place', () => {
+    it('should change order of items in place', () => {
       const indexMapper = new IndexMapper();
       indexMapper.initToLength(10);
 
@@ -619,8 +699,8 @@ describe('IndexMapper', () => {
       expect(indexMapper.getIndexesSequence()).toEqual([9, 8, 7, 6, 5, 4, 3, 0, 1, 2]);
     });
 
-    describe('should move given indexes properly from the top to the bottom', () => {
-      it('ascending order of moved indexes', () => {
+    describe('should move given items properly from the top to the bottom', () => {
+      it('ascending order of moved items', () => {
         const indexMapper = new IndexMapper();
         indexMapper.initToLength(10);
 
@@ -628,7 +708,7 @@ describe('IndexMapper', () => {
         expect(indexMapper.getIndexesSequence()).toEqual([4, 5, 6, 7, 8, 0, 1, 2, 3, 9]);
       });
 
-      it('descending order of moved indexes', () => {
+      it('descending order of moved items', () => {
         const indexMapper = new IndexMapper();
         indexMapper.initToLength(10);
 
@@ -636,7 +716,7 @@ describe('IndexMapper', () => {
         expect(indexMapper.getIndexesSequence()).toEqual([4, 5, 6, 7, 8, 3, 2, 1, 0, 9]);
       });
 
-      it('mixed order of moved indexes', () => {
+      it('mixed order of moved items', () => {
         const indexMapper = new IndexMapper();
         indexMapper.initToLength(10);
 
@@ -645,8 +725,8 @@ describe('IndexMapper', () => {
       });
     });
 
-    describe('should move given indexes properly from the bottom to the top', () => {
-      it('ascending order of moved indexes', () => {
+    describe('should move given items properly from the bottom to the top', () => {
+      it('ascending order of moved items', () => {
         const indexMapper = new IndexMapper();
         indexMapper.initToLength(10);
 
@@ -654,7 +734,7 @@ describe('IndexMapper', () => {
         expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 4, 5, 6, 7, 2, 3, 8, 9]);
       });
 
-      it('descending order of moved indexes', () => {
+      it('descending order of moved items', () => {
         const indexMapper = new IndexMapper();
         indexMapper.initToLength(10);
 
@@ -662,7 +742,7 @@ describe('IndexMapper', () => {
         expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 7, 6, 5, 4, 2, 3, 8, 9]);
       });
 
-      it('mixed order of moved indexes', () => {
+      it('mixed order of moved items', () => {
         const indexMapper = new IndexMapper();
         indexMapper.initToLength(10);
 
@@ -671,7 +751,7 @@ describe('IndexMapper', () => {
       });
     });
 
-    describe('should move given indexes properly when sequence of moves is mixed', () => {
+    describe('should move given items properly when sequence of moves is mixed', () => {
       it('ascending order of moved indexes', () => {
         const indexMapper = new IndexMapper();
         indexMapper.initToLength(10);
@@ -680,7 +760,7 @@ describe('IndexMapper', () => {
         expect(indexMapper.getIndexesSequence()).toEqual([0, 3, 4, 5, 1, 2, 6, 7, 8, 9]);
       });
 
-      it('descending order of moved indexes', () => {
+      it('descending order of moved items', () => {
         const indexMapper = new IndexMapper();
         indexMapper.initToLength(10);
 
@@ -688,17 +768,61 @@ describe('IndexMapper', () => {
         expect(indexMapper.getIndexesSequence()).toEqual([0, 3, 4, 5, 7, 6, 2, 1, 8, 9]);
       });
 
-      it('mixed order of moved indexes', () => {
+      it('mixed order of moved items', () => {
         const indexMapper = new IndexMapper();
         indexMapper.initToLength(10);
 
         indexMapper.moveIndexes([7, 2, 1, 6], 4);
         expect(indexMapper.getIndexesSequence()).toEqual([0, 3, 4, 5, 7, 2, 1, 6, 8, 9]);
       });
+
+      it('index of one from the moved elements is equal to the final index #1', () => {
+        const indexMapper = new IndexMapper();
+        indexMapper.initToLength(10);
+
+        indexMapper.moveIndexes([7, 8], 8);
+        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 9, 7, 8]);
+      });
+
+      it('index of one from the moved elements is equal to the final index #2', () => {
+        const indexMapper = new IndexMapper();
+        indexMapper.initToLength(10);
+
+        indexMapper.moveIndexes([8, 7], 8);
+        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 3, 4, 5, 6, 9, 8, 7]);
+      });
     });
 
-    describe('should move indexes properly when there are skipped indexes', () => {
-      it('from the top down to element before skipped index', () => {
+    describe('should move items properly when there are skipped indexes', () => {
+      it('single index from the top, down to element with skipped index - actually placing it just after the skipped indexes', () => {
+        const indexMapper = new IndexMapper();
+        const skipMap = new SkipMap();
+
+        indexMapper.registerMap('skipMap', skipMap);
+        indexMapper.initToLength(6);
+        skipMap.setValues([false, false, false, true, true, false]);
+
+        indexMapper.moveIndexes([0], 2);
+
+        expect(indexMapper.getIndexesSequence()).toEqual([1, 2, 3, 4, 0, 5]);
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([1, 2, 0, 5]);
+      });
+
+      it('multiple indexes from the top, down to element with skipped index - actually placing it just after the skipped indexes', () => {
+        const indexMapper = new IndexMapper();
+        const skipMap = new SkipMap();
+
+        indexMapper.registerMap('skipMap', skipMap);
+        indexMapper.initToLength(6);
+        skipMap.setValues([false, false, false, true, true, false]);
+
+        indexMapper.moveIndexes([1, 0], 1);
+
+        expect(indexMapper.getIndexesSequence()).toEqual([2, 3, 4, 1, 0, 5]);
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([2, 1, 0, 5]);
+      });
+
+      it('from the top, down to element before skipped index', () => {
         const indexMapper = new IndexMapper();
         const skipMap = new SkipMap();
 
@@ -712,7 +836,7 @@ describe('IndexMapper', () => {
         expect(indexMapper.getNotSkippedIndexes()).toEqual([1, 2, 3, 0, 5, 6, 7, 8, 9]);
       });
 
-      it('from the bottom up to element before skipped index', () => {
+      it('from the bottom, up to element before skipped index', () => {
         const indexMapper = new IndexMapper();
         const skipMap = new SkipMap();
 
@@ -720,10 +844,38 @@ describe('IndexMapper', () => {
         indexMapper.initToLength(10);
         skipMap.setValues([false, false, false, false, true, false, false, false, false, false]);
 
-        indexMapper.moveIndexes([5], 3); // physical index 6, there is one skipped index before the element.
+        indexMapper.moveIndexes([5], 3); // Moving physical index 6 as there is one skipped index before the moved element.
 
         expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 6, 3, 4, 5, 7, 8, 9]);
         expect(indexMapper.getNotSkippedIndexes()).toEqual([0, 1, 2, 6, 3, 5, 7, 8, 9]);
+      });
+
+      it('single index from from the bottom, up to element before skipped index - actually placing it just after the skipped indexes', () => {
+        const indexMapper = new IndexMapper();
+        const skipMap = new SkipMap();
+
+        indexMapper.registerMap('skipMap', skipMap);
+        indexMapper.initToLength(6);
+        skipMap.setValues([false, true, true, false, false, false]);
+
+        indexMapper.moveIndexes([3], 1); // Moving physical index 5 as there are two skipped index before the moved element.
+
+        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 5, 3, 4]);
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([0, 5, 3, 4]);
+      });
+
+      it('multiple indexes from from the bottom, up to element before skipped index - actually placing it just after the skipped indexes', () => {
+        const indexMapper = new IndexMapper();
+        const skipMap = new SkipMap();
+
+        indexMapper.registerMap('skipMap', skipMap);
+        indexMapper.initToLength(6);
+        skipMap.setValues([false, true, true, false, false, false]);
+
+        indexMapper.moveIndexes([3, 2], 1); // Moving physical indexes 5 and 4 as there are two skipped index before the moved element.
+
+        expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 5, 4, 3]);
+        expect(indexMapper.getNotSkippedIndexes()).toEqual([0, 5, 4, 3]);
       });
 
       it('when first few starting indexes are skipped', () => {
@@ -734,13 +886,13 @@ describe('IndexMapper', () => {
         indexMapper.initToLength(10);
         skipMap.setValues([true, true, true, false, false, false, false, false, false, false]);
 
-        indexMapper.moveIndexes([2, 3], 0);
+        indexMapper.moveIndexes([2, 3], 0); // Moving physical indexes 5, 6 as there are three skipped indexes before the moved elements.
 
         expect(indexMapper.getIndexesSequence()).toEqual([0, 1, 2, 5, 6, 3, 4, 7, 8, 9]);
         expect(indexMapper.getNotSkippedIndexes()).toEqual([5, 6, 3, 4, 7, 8, 9]);
       });
 
-      it('when few last indexes are skipped #1', () => {
+      it('when few last indexes are skipped - move to the last visible position', () => {
         const indexMapper = new IndexMapper();
         const skipMap = new SkipMap();
 
@@ -753,7 +905,7 @@ describe('IndexMapper', () => {
         expect(indexMapper.getIndexesSequence()).toEqual([2, 3, 4, 5, 6, 0, 1, 7, 8, 9]);
       });
 
-      it('when few last indexes are skipped #2', () => {
+      it('when few last indexes are skipped - try of moving items to the too height index', () => {
         const indexMapper = new IndexMapper();
         const skipMap = new SkipMap();
 

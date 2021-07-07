@@ -2144,28 +2144,6 @@ describe('Formulas general', () => {
     expect(hot.getData()).toEqual([['B1', 'D1', 'C1', 'A1', 'E1']]);
   });
 
-  it('should support moving rows', () => {
-    const hot = handsontable({
-      data: Handsontable.helper.createSpreadsheetData(5, 1),
-      manualRowMove: true
-    });
-
-    hot.getPlugin('ManualRowMove').moveRow(2, 0);
-
-    hot.getPlugin('ManualRowMove').moveRow(3, 0);
-    hot.getPlugin('ManualRowMove').moveRow(3, 0);
-
-    hot.render();
-
-    expect(hot.getData()).toEqual([
-      ['A2'],
-      ['A4'],
-      ['A3'],
-      ['A1'],
-      ['A5']
-    ]);
-  });
-
   describe('should perform CRUD operations in HyperFormula based on physical indexes', () => {
     describe('action blocking', () => {
       it('should block removing rows based on physical indexes', () => {

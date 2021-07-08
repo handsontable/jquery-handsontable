@@ -32,7 +32,8 @@ const babelPresetConfig = () => ({
 
 module.exports = {
   presets: [
-    ['@babel/preset-env', babelPresetConfig()]
+    ['@babel/preset-env', babelPresetConfig()],
+    '@babel/preset-typescript',
   ],
   plugins: [
     ['@babel/plugin-proposal-object-rest-spread', { useBuiltIns: true }],

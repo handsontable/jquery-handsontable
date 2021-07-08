@@ -14,6 +14,7 @@ dev*.html
 dev*.js
 npm-debug.log
 
+.bundle/
 !dist/README.md
 dist/hyperformula/
 node_modules/

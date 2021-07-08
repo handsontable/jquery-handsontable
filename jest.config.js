@@ -1,6 +1,5 @@
 module.exports = {
   roots: [
-    '<rootDir>/test/unit',
     '<rootDir>/src'
   ],
   coverageDirectory: '<rootDir>/coverage',
@@ -8,7 +7,7 @@ module.exports = {
   setupFilesAfterEnv: [
     '<rootDir>/test/bootstrap.js'
   ],
-  testRegex: '\\.unit\\.js$',
+  testRegex: '\\.unit\\.(j|t)s$',
   testPathIgnorePatterns: [
     '<rootDir>/node_modules/'
   ],

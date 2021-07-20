@@ -79,9 +79,21 @@ export default class RowHeadersRenderer extends BaseRenderer {
         orderView.render();
 
         const TH = orderView.getCurrentNode();
+        const currentStyle = TH.getAttribute('style');
+
+        if (typeof currentStyle === 'string') {
+          const heightCssRegexp = /height:(.*?);/;
+          const matchingCssStyle = currentStyle.match(heightCssRegexp);
+
+          if (matchingCssStyle !== null) {
+            TH.setAttribute('style', matchingCssStyle[0]); // Preserving just `height` CSS style.
+
+          } else {
+            TH.removeAttribute('style');
+          }
+        }
 
         TH.className = '';
-        TH.removeAttribute('style');
 
         rowHeaderFunctions[visibleColumnIndex](sourceRowIndex, TH, visibleColumnIndex);
       }

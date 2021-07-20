@@ -1120,6 +1120,11 @@ export function selectElementIfAllowed(element) {
 
   if (!isOutsideInput(activeElement)) {
     element.select();
+
+    // TODO - temporary hack for #6492.
+    if (isSafari()) {
+      element.focus();
+    }
   }
 }
 

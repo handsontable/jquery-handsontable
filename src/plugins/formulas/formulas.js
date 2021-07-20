@@ -1,5 +1,4 @@
 import { BasePlugin } from '../base';
-import { createAutofillHooks } from './autofill';
 import staticRegister from '../../utils/staticRegister';
 import { error, warn } from '../../helpers/console';
 import {
@@ -30,6 +29,8 @@ Hooks.getSingleton().register('afterSheetAdded');
 Hooks.getSingleton().register('afterSheetRemoved');
 Hooks.getSingleton().register('afterSheetRenamed');
 Hooks.getSingleton().register('afterFormulasValuesUpdate');
+
+const isBlockedSource = source => source === 'UndoRedo.undo' || source === 'UndoRedo.redo' || source === 'auto';
 
 /**
  * This plugin allows you to perform Excel-like calculations in your business applications. It does it by an
@@ -165,10 +166,11 @@ export class Formulas extends BasePlugin {
     this.addHook('afterRemoveRow', (...args) => this.onAfterRemoveRow(...args));
     this.addHook('afterRemoveCol', (...args) => this.onAfterRemoveCol(...args));
 
-    const autofillHooks = createAutofillHooks(this);
-
-    this.addHook('beforeAutofill', autofillHooks.beforeAutofill);
-    this.addHook('afterAutofill', autofillHooks.afterAutofill);
+    this.addHook('beforeAutofill', (...args) => this.onBeforeAutofill(...args));
+    // Handling undo actions on data just using HyperFormula's UndoRedo mechanism
+    this.addHook('beforeUndo', () => this.engine.undo());
+    // Handling redo actions on data just using HyperFormula's UndoRedo mechanism
+    this.addHook('beforeRedo', () => this.engine.redo());
 
     this.#engineListeners.forEach(([eventName, listener]) => this.engine.on(eventName, listener));
 
@@ -555,10 +557,10 @@ export class Formulas extends BasePlugin {
     if (!this.#hotWasInitializedWithEmptyData) {
       const sourceDataArray = this.hot.getSourceDataArray();
 
-      if (this.engine.isItPossibleToReplaceSheetContent(this.sheetName, sourceDataArray)) {
+      if (this.engine.isItPossibleToReplaceSheetContent(this.sheetId, sourceDataArray)) {
         this.#internalOperationPending = true;
 
-        const dependentCells = this.engine.setSheetContent(this.sheetName, this.hot.getSourceDataArray());
+        const dependentCells = this.engine.setSheetContent(this.sheetId, this.hot.getSourceDataArray());
 
         this.renderDependentSheets(dependentCells);
 
@@ -669,40 +671,47 @@ export class Formulas extends BasePlugin {
    *
    * @private
    * @param {Array[]} changes An array of changes in format [[row, prop, oldValue, value], ...].
+   * @param {string} [source] String that identifies source of hook call
+   *                          ([list of all available sources]{@link http://docs.handsontable.com/tutorial-using-callbacks.html#page-source-definition}).
    */
-  onAfterSetDataAtCell(changes) {
-    const dependentCells = [];
+  onAfterSetDataAtCell(changes, source) {
+    if (isBlockedSource(source)) {
+      return;
+    }
+
     const outOfBoundsChanges = [];
     const changedCells = [];
 
-    changes.forEach(([row, prop, , newValue]) => {
-      const column = this.hot.propToCol(prop);
-      const physicalRow = this.hot.toPhysicalRow(row);
-      const physicalColumn = this.hot.toPhysicalColumn(column);
-      const address = {
-        row: physicalRow,
-        col: physicalColumn,
-        sheet: this.sheetId,
-      };
+    const dependentCells = this.engine.batch(() => {
+      changes.forEach(([row, prop, , newValue]) => {
+        const column = this.hot.propToCol(prop);
+        const physicalRow = this.hot.toPhysicalRow(row);
+        const physicalColumn = this.hot.toPhysicalColumn(column);
+        const address = {
+          row: physicalRow,
+          col: physicalColumn,
+          sheet: this.sheetId,
+        };
 
-      if (physicalRow !== null && physicalColumn !== null) {
-        dependentCells.push(...this.syncChangeWithEngine(row, column, newValue));
+        if (physicalRow !== null && physicalColumn !== null) {
+          this.syncChangeWithEngine(row, column, newValue);
 
-      } else {
-        outOfBoundsChanges.push([row, column, newValue]);
-      }
+        } else {
+          outOfBoundsChanges.push([row, column, newValue]);
+        }
 
-      changedCells.push({ address });
+        changedCells.push({ address });
+      });
     });
 
     if (outOfBoundsChanges.length) {
       // Workaround for rows/columns being created two times (by HOT and the engine).
       // (unfortunately, this requires an extra re-render)
       this.hot.addHookOnce('afterChange', () => {
-        const outOfBoundsDependentCells = [];
-
-        outOfBoundsChanges.forEach(([row, column, newValue]) => {
-          outOfBoundsDependentCells.push(...this.syncChangeWithEngine(row, column, newValue));
+        const outOfBoundsDependentCells = this.engine.batch(() => {
+          outOfBoundsChanges.forEach(([row, column, newValue]) => {
+            this.syncChangeWithEngine(row, column, newValue);
+          });
         });
 
         this.renderDependentSheets(outOfBoundsDependentCells, true);
@@ -711,6 +720,46 @@ export class Formulas extends BasePlugin {
 
     this.renderDependentSheets(dependentCells);
     this.validateDependentCells(dependentCells, changedCells);
+  }
+
+  /**
+   * `onBeforeAutofill` hook callback.
+   *
+   * @private
+   * @param {Array[]} fillData The data that was used to fill the `targetRange`. If `beforeAutofill` was used
+   * and returned `[[]]`, this will be the same object that was returned from `beforeAutofill`.
+   * @param {CellRange} sourceRange The range values will be filled from.
+   * @param {CellRange} targetRange The range new values will be filled into.
+   * @returns {boolean|*}
+   */
+  onBeforeAutofill(fillData, sourceRange, targetRange) {
+    const sourceLeftCorner = { ...sourceRange.from, sheet: this.sheetId };
+    const sourceWidth = sourceRange.getWidth();
+    const sourceHeight = sourceRange.getHeight();
+    const targetLeftCorner = { ...targetRange.from, sheet: this.sheetId };
+    const targetWidth = targetRange.getWidth();
+    const targetHeight = targetRange.getHeight();
+
+    // Blocks the autofill operation if at least one of the underlying's cell
+    // contents cannot be set, e.g. if there's a matrix underneath.
+    if (this.engine.isItPossibleToSetCellContents(targetLeftCorner, targetWidth, targetHeight) === false) {
+      return false;
+    }
+
+    const sourceEnd = {
+      row: sourceLeftCorner.row + sourceHeight - 1,
+      col: sourceLeftCorner.col + sourceWidth - 1,
+      sheet: sourceLeftCorner.sheet,
+    };
+    const source = { start: sourceLeftCorner, end: sourceEnd };
+    const targetEnd = {
+      row: targetLeftCorner.row + targetHeight - 1,
+      col: targetLeftCorner.col + targetWidth - 1,
+      sheet: targetLeftCorner.sheet,
+    };
+    const target = { start: targetLeftCorner, end: targetEnd };
+
+    return this.engine.getFillRangeData(source, target);
   }
 
   /**
@@ -812,8 +861,14 @@ export class Formulas extends BasePlugin {
    * @private
    * @param {number} row Represents the visual index of first newly created row in the data source array.
    * @param {number} amount Number of newly created rows in the data source array.
+   * @param {string} [source] String that identifies source of hook call
+   *                          ([list of all available sources]{@link http://docs.handsontable.com/tutorial-using-callbacks.html#page-source-definition}).
    */
-  onAfterCreateRow(row, amount) {
+  onAfterCreateRow(row, amount, source) {
+    if (isBlockedSource(source)) {
+      return;
+    }
+
     const changes = this.engine.addRows(this.sheetId, [this.toPhysicalRowPosition(row), amount]);
 
     this.renderDependentSheets(changes);
@@ -825,8 +880,14 @@ export class Formulas extends BasePlugin {
    * @private
    * @param {number} col Represents the visual index of first newly created column in the data source.
    * @param {number} amount Number of newly created columns in the data source.
+   * @param {string} [source] String that identifies source of hook call
+   *                          ([list of all available sources]{@link http://docs.handsontable.com/tutorial-using-callbacks.html#page-source-definition}).
    */
-  onAfterCreateCol(col, amount) {
+  onAfterCreateCol(col, amount, source) {
+    if (isBlockedSource(source)) {
+      return;
+    }
+
     const changes = this.engine.addColumns(this.sheetId, [this.toPhysicalColumnPosition(col), amount]);
 
     this.renderDependentSheets(changes);
@@ -839,8 +900,14 @@ export class Formulas extends BasePlugin {
    * @param {number} row Visual index of starter row.
    * @param {number} amount An amount of removed rows.
    * @param {number[]} physicalRows An array of physical rows removed from the data source.
+   * @param {string} [source] String that identifies source of hook call
+   *                          ([list of all available sources]{@link http://docs.handsontable.com/tutorial-using-callbacks.html#page-source-definition}).
    */
-  onAfterRemoveRow(row, amount, physicalRows) {
+  onAfterRemoveRow(row, amount, physicalRows, source) {
+    if (isBlockedSource(source)) {
+      return;
+    }
+
     const descendingPhysicalRows = physicalRows.sort().reverse();
 
     const changes = this.engine.batch(() => {
@@ -859,8 +926,14 @@ export class Formulas extends BasePlugin {
    * @param {number} col Visual index of starter column.
    * @param {number} amount An amount of removed columns.
    * @param {number[]} physicalColumns An array of physical columns removed from the data source.
+   * @param {string} [source] String that identifies source of hook call
+   *                          ([list of all available sources]{@link http://docs.handsontable.com/tutorial-using-callbacks.html#page-source-definition}).
    */
-  onAfterRemoveCol(col, amount, physicalColumns) {
+  onAfterRemoveCol(col, amount, physicalColumns, source) {
+    if (isBlockedSource(source)) {
+      return;
+    }
+
     const descendingPhysicalColumns = physicalColumns.sort().reverse();
 
     const changes = this.engine.batch(() => {
